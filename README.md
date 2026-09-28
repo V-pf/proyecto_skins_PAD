@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 =======
 # Skins PAD
 
@@ -11,8 +10,7 @@ Referencias usadas para el diseño y las funciones: Skinport, CS.MONEY y el prop
 - Abre la carpeta en VS Code y usa Live Server sobre `home.html`.
 - También sirve hacer doble clic en `home.html`.
 - Bootstrap y las tipografías se cargan desde internet (CDN), así que necesitas conexión para que se vea bien.
->>>>>>> 2b10bf8 (cambios a documentos y partes del cliente)
-
+  
 ## Qué hay en cada carpeta
 
 ```
@@ -33,7 +31,6 @@ skins-pad/
 ├── js/detalle.js            barra de desgaste/float y contador de cantidad
 └── img/                     logo e ilustraciones de ejemplo (SVG, dibujadas a mano)
 ```
-<<<<<<< HEAD
 =======
 
 ## Funciones agregadas respecto del ejemplo original de Botánica PAD
@@ -97,4 +94,3 @@ El script es genérico: cualquier `<form data-validar>` queda validado automáti
 - **entero_positivo**, **solo_numeros_tarjeta**, **cvv**, **vencimiento_tarjeta**: para futuros formularios de pago.
 
 Además valida de forma nativa los campos `required`, `type="email"`, `minlength`/`maxlength` y confirma contraseñas/correos repetidos (`data-confirma-a`).
->>>>>>> 2b10bf8 (cambios a documentos y partes del cliente)
