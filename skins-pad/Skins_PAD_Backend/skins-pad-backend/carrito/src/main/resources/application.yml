@@ -1,0 +1,23 @@
+server:
+  address: ${SERVICE_BIND_ADDRESS:127.0.0.1}
+  port: 8083
+spring:
+  application:
+    name: skins-pad-carrito
+  datasource:
+    url: ${CARRITO_DB_URL:jdbc:mysql://localhost:3306/skinspad_carrito?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Santiago&characterEncoding=UTF-8}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${CARRITO_DB_USERNAME:root}
+    password: ${CARRITO_DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: false
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+services:
+  catalogo-url: ${CATALOGO_URL:http://localhost:8081}
