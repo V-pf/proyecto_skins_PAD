@@ -1,0 +1,12 @@
+import { useMemo, useState } from 'react';
+import type { Sale } from '../../lib/stats/types';
+import { dateLabel, labels, money } from '../../lib/stats/format';
+export function DataTable({rows}:{rows:Sale[]}) {
+  const [search,setSearch]=useState(''),[sort,setSort]=useState('date-desc'),[page,setPage]=useState(0);
+  const filtered=useMemo(()=>rows.filter(r=>`${r.name} ${r.paymentId} ${r.sellerId} ${r.category}`.toLocaleLowerCase('es').includes(search.toLocaleLowerCase('es'))).sort((a,b)=>sort==='net-desc'?(b.net??-1)-(a.net??-1):sort==='net-asc'?(a.net??Infinity)-(b.net??Infinity):sort==='name'?a.name.localeCompare(b.name):b.date.localeCompare(a.date)),[rows,search,sort]);
+  const pages=Math.max(1,Math.ceil(filtered.length/10)),current=Math.min(page,pages-1);
+  return <><div className="stats-table-controls"><label>Buscar publicación, vendedor u operación<input type="search" value={search} onChange={e=>{setSearch(e.target.value);setPage(0);}} placeholder="Nombre o identificador"/></label><label>Ordenar<select value={sort} onChange={e=>{setSort(e.target.value);setPage(0);}}><option value="date-desc">Fecha: más reciente</option><option value="net-desc">Precio: mayor a menor</option><option value="net-asc">Precio: menor a mayor</option><option value="name">Nombre</option></select></label></div>
+    <div className="stats-table-scroll" tabIndex={0} role="region" aria-label="Tabla de publicaciones vendidas"><table><caption>{filtered.length} líneas de venta. Una operación puede contener varias skins.</caption><thead><tr><th>Operación / fecha de creación</th><th>Publicación</th><th>Categoría</th><th>Vendedor</th><th>Método</th><th>Sin comisión</th><th>Estado</th></tr></thead><tbody>{filtered.slice(current*10,current*10+10).map(r=><tr key={r.paymentId+'-'+r.productId}><td>#{r.paymentId}<small>{dateLabel(r.date)} {r.date.slice(0,4)}</small></td><td>{r.name}<small>#{r.productId}</small></td><td>{r.category}</td><td>{r.sellerId}</td><td>{labels[r.method]??r.method}</td><td>{money(r.net)}</td><td><span className="stats-status">Aprobada</span></td></tr>)}{!filtered.length&&<tr><td colSpan={7}>Sin resultados para esta búsqueda.</td></tr>}</tbody></table></div>
+    <nav className="stats-pagination" aria-label="Paginación de ventas"><button className="stats-button" disabled={current===0} onClick={()=>setPage(current-1)}>Anterior</button><span aria-live="polite">Página {current+1} de {pages}</span><button className="stats-button" disabled={current>=pages-1} onClick={()=>setPage(current+1)}>Siguiente</button></nav>
+  </>;
+}

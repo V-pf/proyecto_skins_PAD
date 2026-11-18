@@ -1,0 +1,5 @@
+import {solicitar} from './http';
+import type {EstadoOperacion} from '../components/operaciones/EstadoOperacionBadge';import type {Evento} from '../components/operaciones/LineaDeTiempoOperacion';
+export interface Operacion {id:number;pagoId:number;productoId:number;compradorId:string;vendedorId:string;nombre:string;precio:number;comision:number;estado:EstadoOperacion;retenido:boolean;historica:boolean;sincronizado:boolean;errorSincronizacion:string|null;vence:string|null;causa:string|null;creada:string;accionPendiente:string|null}
+export interface VistaOperacion {operacion:Operacion;eventos:Evento[];metodo:string;pagoAtascado:boolean}
+export const operacionService={listar:(vista:string,signal?:AbortSignal)=>solicitar<VistaOperacion[]>('/operaciones?vista='+encodeURIComponent(vista),'GET',undefined,signal),actuar:(id:number,accion:string,motivo:string)=>solicitar<VistaOperacion>('/operaciones/'+id+'/'+accion,'POST',{motivo}),verificar:(id:number,motivo:string)=>solicitar<VistaOperacion[]>('/operaciones/pagos/'+id+'/verificar','POST',{motivo})};
