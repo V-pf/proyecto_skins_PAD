@@ -3,6 +3,7 @@ export interface Group { key: string; label: string; count: number; amount: numb
 export interface Rank { key: string; label: string; image: string|null; units: number; income: number|null; state: string }
 export interface Sale { paymentId: number; productId: number; date: string; name: string; image: string|null; category: string; sellerId: string; method: string; net: number|null; gross: number|null; state: string }
 export interface Stats {
+  custody: Group[];
   timezone: string; from: string|null; to: string; compareFrom: string|null; compareTo: string|null;
   current: Summary; previous: Summary|null;
   timeline: {date:string; gross:number|null; operations:number}[];

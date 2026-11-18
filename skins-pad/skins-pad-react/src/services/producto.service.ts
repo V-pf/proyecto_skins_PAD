@@ -12,6 +12,11 @@ export const productoService = {
   async retirar(id: number, motivo: string) {
     await solicitar<void>(`/productos/${id}?motivo=${encodeURIComponent(motivo)}`, "DELETE");
   },
+  async cambiarEstado(id: number, estado: string, motivoRechazo?: string) {
+    return productoUI(await solicitar<ProductoAPI>(
+      "/productos/" + id + "/estado", "PATCH", { estado, motivoRechazo },
+    ));
+  },
   async actualizar(id: number, datos: unknown) {
     return productoUI(await solicitar<ProductoAPI>("/productos/" + id, "PUT", datos));
   },

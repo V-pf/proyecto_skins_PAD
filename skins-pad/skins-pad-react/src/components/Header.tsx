@@ -97,6 +97,7 @@ export default function Header() {
                         </Link>
                       </li>
                       <li>
+                        <Link className="dropdown-item" to="/cliente/compras">Mis compras</Link><Link className="dropdown-item" to="/cliente/ventas">Mis ventas</Link>
                         <Link className="dropdown-item" to="/cliente/pagos">
                           Mis pagos
                         </Link>

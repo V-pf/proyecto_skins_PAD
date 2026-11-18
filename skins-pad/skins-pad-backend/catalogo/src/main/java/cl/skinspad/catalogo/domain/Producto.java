@@ -39,6 +39,8 @@ public class Producto {
     private Long id;
 
     private String vendedorId;
+    @Column(unique=true) private Long inventarioId;
+    private Boolean demo = false;
     // Guarda la referencia del pago ligado a la reserva o la venta.
     private String reservaPago;
     @Column(length=500) private String motivoRechazo;

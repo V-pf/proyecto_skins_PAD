@@ -51,10 +51,12 @@ public class AccesoFilter implements GlobalFilter, Ordered {
     var request = x.getRequest();
     String p = request.getPath().value(), m = request.getMethod().name();
     // Permite consultar el catálogo y los perfiles públicos, registrarse e iniciar sesión.
+    if (p.equals("/api/steam/callback") && m.equals("GET")) return chain.filter(x);
     if (m.equals("OPTIONS")
         || (m.equals("GET")
             && (p.startsWith("/api/productos")
                 || p.startsWith("/api/categorias")
+                || p.startsWith("/api/calificaciones/vendedor/")
                 || p.equals("/api/usuarios/publicos")))
         || (m.equals("POST") && (p.equals("/api/auth/login") || p.equals("/api/auth/registro"))))
       return chain.filter(x);
@@ -138,10 +140,27 @@ public class AccesoFilter implements GlobalFilter, Ordered {
       ServerWebExchange x, String p, String m, Map u, Map body, String token) {
     boolean admin = "admin".equals(u.get("rol")), leer = m.equals("GET");
     String id = String.valueOf(u.get("id"));
+    if(p.matches("/api/pagos/[0-9]+/(confirmar|rechazar|reembolsar)"))return Mono.just(false);
+    if (p.startsWith("/api/operaciones")) {
+      if(p.matches("/api/operaciones/pagos/[0-9]+/verificar"))return Mono.just(admin && m.equals("POST"));
+      if(p.equals("/api/operaciones"))return Mono.just(leer);
+      if(p.matches("/api/operaciones/[0-9]+(/.*)?"))return cliente.get().uri(pagos+"/api/operaciones/"+p.split("/")[3]).header("Authorization","Bearer "+token).retrieve().bodyToMono(Map.class).map(v->{
+        Map o=(Map)v.get("operacion");String action=p.substring(p.lastIndexOf('/')+1);
+        if(leer)return admin || id.equals(o.get("compradorId")) || id.equals(o.get("vendedorId"));
+        if(!m.equals("POST"))return false;
+        if(java.util.Set.of("congelar","resolver-comprador","resolver-vendedor").contains(action))return admin;
+        if(action.equals("cancelar"))return admin || id.equals(o.get("compradorId"));
+        if(admin)return false;
+        return java.util.Set.of("aceptar","rechazar","entregar").contains(action)?id.equals(o.get("vendedorId")):java.util.Set.of("recibir","disputar").contains(action)&&id.equals(o.get("compradorId"));
+      });
+      return Mono.just(false);
+    }
     if (p.equals("/api/admin/stats")) return Mono.just(admin && leer);
     if (p.equals("/api/auth/validar"))
       return Mono.just(token.equals(x.getRequest().getQueryParams().getFirst("token")));
     if (p.equals("/api/pagos/mis-ventas")) return Mono.just(leer && !admin);
+    if (p.equals("/api/calificaciones")) return Mono.just(m.equals("POST") && "cliente".equals(u.get("rol")));
+    if (p.startsWith("/api/inventario") || p.equals("/api/steam/vincular")) return Mono.just("cliente".equals(u.get("rol")));
     if (p.equals("/api/auth/logout")) return Mono.just(true);
     if (p.equals("/api/pagos/checkout")) return Mono.just(!admin);
     if (admin && (p.startsWith("/api/carritos") || p.endsWith("/retiros") || p.endsWith("/perfil") || (p.equals("/api/productos") && m.equals("POST")))) return Mono.just(false);
@@ -155,7 +174,7 @@ public class AccesoFilter implements GlobalFilter, Ordered {
       return recurso(carritos + "/api/carritos/" + p.split("/")[3])
           .map(c -> id.equals(c.get("usuarioId")));
     if (p.matches("/api/pagos/[0-9]+(/.*)?"))
-      return recurso(pagos + "/api/pagos/" + p.split("/")[3])
+      return cliente.get().uri(pagos + "/api/pagos/" + p.split("/")[3]).header("Authorization","Bearer "+token).retrieve().bodyToMono(Map.class)
           .map(c -> id.equals(c.get("usuarioId")) && (leer || p.endsWith("/comprobante")));
     if (p.matches("/api/productos/[0-9]+/imagenes(/[0-9]+)?"))
       return recurso(productos + "/api/productos/" + p.split("/")[3])

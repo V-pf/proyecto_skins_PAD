@@ -6,10 +6,12 @@ interface Enlace {
 }
 
 const CLIENTE: Enlace[] = [
+  { a: "/cliente/compras", texto: "Mis compras" },
+  { a: "/cliente/ventas", texto: "Mis ventas" },
   { a: "/cliente/panel", texto: "Resumen" },
   { a: "/cliente/pagos", texto: "Mis pagos" },
   { a: "/cliente/carrito", texto: "Carrito" },
-  { a: "/cliente/vender", texto: "Vender una skin" },
+  { a: "/cliente/inventario", texto: "Mi inventario / Vender" },
   { a: "/cliente/publicaciones", texto: "Mis publicaciones" },
   { a: "/cliente/billetera", texto: "Billetera y retiros" },
   { a: "/cliente/perfil", texto: "Editar perfil" },

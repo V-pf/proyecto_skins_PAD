@@ -20,6 +20,7 @@ export default function ProductoCard({ producto: p }: { producto: Producto }) {
         </figcaption>
       </figure>
       <div className="card-body d-flex flex-column">
+        {p.demo && <span className="badge text-bg-warning mb-2">Ítem de prueba</span>}
         <h3 className="h6 card-title mb-1">
           <Link to={`/producto/${p.id}`}>{p.nombre}</Link>{" "}
           {p.stattrak && (

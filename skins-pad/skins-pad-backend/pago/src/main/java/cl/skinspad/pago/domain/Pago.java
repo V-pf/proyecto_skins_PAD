@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 
 // Registro de un cobro con su comprador, método, monto, estado y skins incluidas.
 @Entity
-@Table(name = "pagos")
+@Table(name = "pagos", uniqueConstraints = @jakarta.persistence.UniqueConstraint(columnNames="pedidoId"))
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -25,6 +25,9 @@ public class Pago {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    private Boolean custodia;
+    private String etapaCustodia;
+    @Column(length=500) private String errorCustodia;
     @org.hibernate.annotations.BatchSize(size=100)
     @jakarta.persistence.ElementCollection(fetch=jakarta.persistence.FetchType.EAGER)
     private java.util.List<Long> productoIds=new java.util.ArrayList<>();

@@ -13,7 +13,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CatalogoSeed {
 
-    @Bean CommandLineRunner cargarDatos(CategoriaRepository categorias, ProductoRepository productos) {
+    @Bean @org.springframework.core.annotation.Order(0) CommandLineRunner cargarDatos(CategoriaRepository categorias, ProductoRepository productos) {
         return args -> {
             if(categorias.count()>0 || productos.count()>0) return;
             Map<String, String> descripciones = Map.of("rifle", "Rifles", "francotirador", "Rifles de francotirador", "pistola", "Pistolas", "subfusil", "Subfusiles", "cuchillo", "Cuchillos", "guantes", "Guantes", "sticker", "Stickers");

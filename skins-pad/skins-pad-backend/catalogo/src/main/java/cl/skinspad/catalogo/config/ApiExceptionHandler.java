@@ -39,6 +39,10 @@ public class ApiExceptionHandler {
         return response(HttpStatus.BAD_REQUEST, msg);
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String,Object>> duplicate(RuntimeException ex) {
+        return response(HttpStatus.CONFLICT,"El perfil o el ítem ya está vinculado. Actualiza el inventario.");
+    }
     private ResponseEntity<Map<String, Object>> response(HttpStatus status, String message) {
         return ResponseEntity.status(status).body(Map.of("timestamp", Instant.now().toString(), "status", status.value(), "error", status.getReasonPhrase(), "message", message == null ? "Error" : message));
     }

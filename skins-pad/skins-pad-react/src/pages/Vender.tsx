@@ -1,239 +1,84 @@
-import { useOperacion } from "../lib/useOperacion";
 import { useState } from "react";
-import type { FormEvent } from "react";
-import { Link } from "react-router-dom";
-import Campo from "../components/Campo";
+import { Link, useSearchParams } from "react-router-dom";
 import MenuCuenta from "../components/MenuCuenta";
-import Migas from "../components/Migas";
+import GraficoPreciosInventario from "../components/GraficoPreciosInventario";
+import { useInventario } from "../hooks/useInventario";
+import { inventarioService } from "../services/inventario.service";
 import { useAuth } from "../context/AuthContext";
 import { useTienda } from "../context/TiendaContext";
-import { GRADOS, TIPOS, desgastePorFloat } from "../lib/catalogos";
-import { useFormulario } from "../lib/useFormulario";
-import type { Errores } from "../lib/useFormulario";
-import { aceptado, requerido, seleccion } from "../lib/validaciones";
-import type { Grado, Tipo } from "../types";
-
-interface VenderForm {
-  [clave: string]: string | boolean;
-  nombre: string;
-  tipo: string;
-  categoria: string;
-  grado: string;
-  float: string;
-  stattrak: boolean;
-  precio: string;
-  urlIntercambio: string;
-  descripcion: string;
-  acepta: boolean;
-}
-
-const INICIAL: VenderForm = {
-  nombre: "",
-  tipo: "",
-  categoria: "",
-  grado: "",
-  float: "",
-  stattrak: false,
-  precio: "",
-  urlIntercambio: "",
-  descripcion: "",
-  acepta: false,
-};
-
+import { DESGASTES, imagenDe } from "../lib/catalogos";
 export default function Vender() {
-  const { ejecutar, ocupado } = useOperacion();
   const { usuario } = useAuth();
-  const { crearProducto, categorias, cargando } = useTienda();
-  const [publicada, setPublicada] = useState<string | null>(null);
-
-  const form = useFormulario<VenderForm>(
-    "vender",
-    INICIAL,
-    (v): Errores<VenderForm> => ({
-      nombre:
-        v.nombre.trim().length < 3
-          ? v.nombre.trim() === ""
-            ? "Este campo es obligatorio."
-            : "Escribe al menos 3 caracteres."
-          : "",
-      categoria: seleccion(v.categoria),
-      tipo: seleccion(v.tipo),
-      grado: seleccion(v.grado),
-      float: v.tipo === "sticker" ? "" : requerido(v.float, "float_desgaste"),
-      precio: requerido(v.precio, "precio"),
-      urlIntercambio: requerido(v.urlIntercambio, "url_steam"),
-      acepta: aceptado(v.acepta),
-    }),
-  );
-
-  if (!usuario) return null;
-  // La cuenta debe estar verificada antes de usar el formulario de publicación.
-  if (!usuario.verificado) return <p className="container py-4">Tu cuenta debe ser verificada por administración antes de publicar.</p>;
-  if (cargando.categorias) return <p className="container py-4">Cargando categorías…</p>;
-
-  function publicar(e: FormEvent) {
-    e.preventDefault();
-    void ejecutar(async () => {
-      setPublicada(null);
-      if (!usuario || !form.validar()) return;
-      const v = form.valores;
-      const tipo = v.tipo as Tipo;
-      // Los stickers no tienen desgaste. En las otras skins se calcula a partir del float.
-      const float = tipo === "sticker" ? null : Number(v.float);
-      // La publicación se envía como pendiente para que la revise administración.
-      const nueva = await crearProducto({
-        nombre: v.nombre.trim(),
-        tipo,
-        categoriaId:Number(v.categoria),
-        grado: v.grado as Grado,
-        desgaste: float === null ? "na" : desgastePorFloat(float),
-        precio: Math.round(Number(v.precio)),
-        stattrak: v.stattrak,
-        float,
-        vendedor: usuario.usuario,
-        urlIntercambio: v.urlIntercambio.trim(),
-        estado: "pendiente",
-        descripcion: v.descripcion.trim() || undefined,
-      });
-
-      setPublicada(nueva.nombre);
-      form.reiniciar();
-    });
+  const { recargar: recargarTienda } = useTienda();
+  const { datos, cargando, error, recargar, sincronizar } = useInventario();
+  const [seleccion, setSeleccion] = useState<number | null>(null);
+  const [precio, setPrecio] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  const [aviso, setAviso] = useState("");
+  const [errorAccion, setErrorAccion] = useState("");
+  const [params] = useSearchParams();
+  const elegido = datos?.items.find(v => v.item.id === seleccion);
+  async function vincular() {
+    setOcupado(true); setErrorAccion("");
+    try { const { url } = await inventarioService.vincular(); window.location.assign(url); }
+    catch (e) { setErrorAccion(e instanceof Error ? e.message : "No se pudo iniciar la vinculación."); setOcupado(false); }
   }
-
-  return (
-    <div className="container py-4">
-      <Migas
-        items={[
-          { texto: "Inicio", a: "/" },
-          { texto: "Mi cuenta", a: "/cliente/panel" },
-          { texto: "Vender una skin" },
-        ]}
-      />
-      <h1 className="mb-2">Vender una skin</h1>
-      <p className="text-body-secondary mb-4" style={{ maxWidth: "70ch" }}>
-        Completa los datos del ítem tal como aparecen en tu inventario de Steam.
-        Revisamos cada publicación antes de que quede visible en el catálogo.
-      </p>
-      <div className="row g-4">
-        <MenuCuenta tipo="cliente" activo="/cliente/vender" />
-        <div className="col-lg-9">
-          <form onSubmit={publicar} noValidate>
-            {form.intento && Object.keys(form.errores).length > 0 && (
-              <div className="alert alert-danger" role="alert">
-                Hay campos por corregir. Revisa los mensajes marcados en rojo.
-              </div>
-            )}
-            {publicada && (
-              <div className="alert alert-success" role="status">
-                «{publicada}» quedó enviada a revisión. Cuando un administrador
-                la apruebe aparecerá en el catálogo.{" "}
-                <Link to="/cliente/publicaciones">Ver mis publicaciones</Link>
-              </div>
-            )}
-            <fieldset className="mb-4">
-              <legend className="h6">Datos de la skin</legend>
-              <Campo form={form} nombre="categoria" tipo="select" etiqueta="Categoría" opciones={categorias.filter(c=>c.estadoHabilitada).map(c=>({valor:String(c.id),etiqueta:c.nombre}))} textoOpcionVacia="Selecciona una categoría"/>
-              <Campo
-                form={form}
-                nombre="nombre"
-                etiqueta="Nombre exacto de la skin"
-                placeholder="AK-47 | Redline"
-              />
-              <Campo
-                form={form}
-                nombre="tipo"
-                tipo="select"
-                etiqueta="Tipo de arma"
-                opciones={TIPOS.map((t) => ({
-                  valor: t.valor,
-                  etiqueta: t.etiqueta,
-                }))}
-                textoOpcionVacia="Selecciona un tipo"
-              />
-              <Campo
-                form={form}
-                nombre="grado"
-                tipo="select"
-                etiqueta="Grado de rareza"
-                opciones={GRADOS.map((g) => ({
-                  valor: g.valor,
-                  etiqueta: g.etiqueta,
-                }))}
-                textoOpcionVacia="Selecciona un grado"
-              />
-              <Campo
-                form={form}
-                nombre="float"
-                tipo="number"
-                etiqueta="Valor de float"
-                placeholder="0.2461"
-                step="0.0001"
-                min="0"
-                max="1"
-                ayuda="Un número entre 0,0000 y 1,0000. Lo encuentras en el inventario de Steam."
-              />
-              <Campo
-                form={form}
-                nombre="stattrak"
-                tipo="checkbox"
-                etiqueta="Es StatTrak™"
-              />
-            </fieldset>
-            <fieldset className="mb-4">
-              <legend className="h6">Precio</legend>
-              <Campo
-                form={form}
-                nombre="precio"
-                tipo="number"
-                etiqueta="Precio de venta (CLP)"
-                placeholder="28990"
-                step="10"
-                ayuda="Entre $100 y $50.000.000."
-              />
-              <Campo
-                form={form}
-                nombre="urlIntercambio"
-                etiqueta="Enlace de intercambio de Steam"
-                placeholder="https://steamcommunity.com/tradeoffer/new/?partner=..."
-                ayuda="Lo encuentras en Steam > Inventario > Intercambiar objetos."
-              />
-            </fieldset>
-            <Campo
-              form={form}
-              nombre="descripcion"
-              tipo="textarea"
-              maxLength={300}
-              etiqueta={
-                <>
-                  Descripción para el comprador{" "}
-                  <span className="text-body-secondary fw-normal">
-                    (opcional)
-                  </span>
-                </>
-              }
-              ayuda={
-                <>
-                  Cuenta detalles como el patrón, si tiene stickers o si es de
-                  una caída especial.
-                  <span className="float-end">
-                    {form.valores.descripcion.length}/300
-                  </span>
-                </>
-              }
-            />
-            <Campo
-              form={form}
-              nombre="acepta"
-              tipo="checkbox"
-              etiqueta="Entiendo que Skins PAD acredita mi venta al aprobarse el pago y suma un 5% de comisión al total del comprador."
-            />
-            <button type="submit" className="btn btn-primary">
-              Publicar skin
-            </button>
-          </form>
-        </div>
+  return <main className="container py-4">
+    <h1>Mi inventario CS2</h1>
+    <div className="row g-4">
+      <MenuCuenta tipo="cliente" activo="/cliente/inventario" />
+      <div className="col-lg-9">
+        {params.get("steam") === "vinculado" && <p className="alert alert-success">Steam vinculado. Tu inventario se importó correctamente.</p>}
+        {params.get("steam") === "sincronizacion-pendiente" && <p className="alert alert-warning">Steam vinculado. Haz público tu inventario y pulsa Sincronizar para completar la importación.</p>}
+        {params.get("steam") === "error" && <p className="alert alert-danger">No se pudo verificar la vinculación con Steam. Inténtalo de nuevo con un perfil que no esté vinculado a otra cuenta.</p>}
+        {error && <p role="alert" className="alert alert-danger">{error} <button onClick={recargar}>Reintentar</button></p>}
+        {errorAccion && <p role="alert" className="alert alert-danger">{errorAccion}</p>}
+        {aviso && <p role="status" className="alert alert-success">{aviso} <Link to="/cliente/publicaciones">Ver mis publicaciones</Link></p>}
+        {cargando && <p role="status">Cargando inventario…</p>}
+        {datos && <>
+          {datos.demo && <p className="alert alert-warning">Inventario de prueba. Los ítems y el historial simulado permiten practicar el flujo de publicación.</p>}
+          {datos.steamId ? <p>Perfil vinculado · <a href={"https://steamcommunity.com/profiles/" + datos.steamId} target="_blank" rel="noreferrer">Ver en Steam</a></p> : <>
+            <p>Vincula tu cuenta de Steam para importar automáticamente tu inventario de CS2. Tu inventario debe ser público.</p>
+            <button className="btn btn-primary mb-3" disabled={ocupado || cargando} onClick={() => void vincular()}>Vincular con Steam</button>
+          </>}
+          {(datos.steamId || datos.demo) && <>
+            <div className="d-flex align-items-center gap-3 mb-3">
+              <button className="btn btn-outline-light" disabled={ocupado || cargando} onClick={() => void sincronizar()}>Sincronizar inventario</button>
+              {datos.sincronizado && <small>Actualizado {new Date(datos.sincronizado).toLocaleString("es-CL")}</small>}
+            </div>
+            {!usuario?.verificado && <p className="alert alert-info">Tu cuenta debe ser verificada por administración para publicar.</p>}
+            {!cargando && !datos.items.length && <p>Tu inventario de CS2 está vacío.</p>}
+            <div className="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3">
+              {datos.items.map(({ item, publicable, estadoPublicacion }) => <div className="col" key={item.id}>
+                <article className={"card h-100 p-3 " + (seleccion === item.id ? "border-primary" : "")}>
+                  {(item.imagen || item.tipo) && <img src={item.imagen || imagenDe(item.tipo!)} alt={item.nombre} height={140} style={{ objectFit: "contain" }} />}
+                  <h2 className="h6 mt-2">{item.nombre}</h2>
+                  <p className="small">{DESGASTES[item.desgaste].nombre}</p>
+                  <p className="small text-body-secondary">{!item.presente ? "Ya no está en tu inventario" : !item.intercambiable ? "Intercambio bloqueado en Steam" : !item.tipo ? "Tipo de ítem no admitido para venta" : estadoPublicacion && !publicable ? "Publicación " + estadoPublicacion.toLowerCase().replace(/_/g, " ") : "Disponible para publicar"}</p>
+                  <button className="btn btn-outline-light mt-auto" disabled={ocupado || cargando} onClick={() => { setSeleccion(item.id); setPrecio(""); setAviso(""); }}>Seleccionar</button>
+                </article>
+              </div>)}
+            </div>
+            {elegido && <section className="mt-4" key={elegido.item.id}>
+              <h2 className="h4">{elegido.item.nombre}</h2>
+              <GraficoPreciosInventario itemId={elegido.item.id} />
+              {elegido.publicable && <form onSubmit={async e => {
+                e.preventDefault(); setOcupado(true); setErrorAccion(""); setAviso("");
+                try {
+                  await inventarioService.publicar(elegido.item.id, Number(precio));
+                  setAviso("Publicación enviada a revisión."); setSeleccion(null); setPrecio(""); recargar();
+                  await recargarTienda();
+                } catch (e) { setErrorAccion(e instanceof Error ? e.message : "No se pudo publicar."); }
+                finally { setOcupado(false); }
+              }}>
+                <label className="d-block">Precio de venta (CLP)<input className="form-control" type="number" min="1" max="50000000" step="1" required value={precio} onChange={e => setPrecio(e.target.value)} /></label>
+                <p className="small mt-2">El comprador paga un 5% adicional de comisión. La publicación será revisada por administración.</p>
+                <button className="btn btn-primary" disabled={ocupado || cargando || !usuario?.verificado}>{ocupado ? "Publicando…" : "Publicar skin"}</button>
+              </form>}
+            </section>}
+          </>}
+        </>}
       </div>
     </div>
-  );
+  </main>;
 }

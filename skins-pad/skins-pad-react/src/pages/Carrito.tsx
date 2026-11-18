@@ -63,7 +63,7 @@ export default function Carrito() {
         );
       }
       setModalAbierto(false);
-      navigate("/cliente/pagos", {
+      navigate("/cliente/compras", {
         state: { mensaje: "Pago #" + pago.id + " registrado: " + pago.estado },
       });
     });

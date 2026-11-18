@@ -46,7 +46,7 @@ class CatalogoServiceTest {
 
     @Test
     void actualizaPrecioValidoDesdeElServicio() {
-        when(productos.findById(1L)).thenReturn(Optional.of(producto));
+        when(productos.bloquear(1L)).thenReturn(Optional.of(producto));
         when(productos.save(producto)).thenReturn(producto);
 
         Producto resultado = service.actualizarPrecio(1L, new BigDecimal("2500"));
