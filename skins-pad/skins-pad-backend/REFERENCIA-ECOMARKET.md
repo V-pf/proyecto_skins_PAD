@@ -15,10 +15,10 @@ Se tomó como referencia el patrón de ambos ZIP de ejemplo:
 - `pago` → `skinspad_pago`
 - `carrito` usa `CatalogoClient` de OpenFeign para consultar `GET /api/productos/{id}`.
 - `pago` usa `UsuarioFeignClient` para consultar `GET /api/usuarios/{id}` y solicitar débitos/reintegros de saldo.
-- El Gateway queda en `8080`; los microservicios usan los puertos `8081` a `8084`.
+- El Gateway usa `8090`; usuario usa `8087`, catálogo `8081`, carrito `8083` y pago `8084`.
 
 ## Importante
 
 El ejemplo de EcoMarket configura `catalogo.service.url=localhost:8081`. Para evitar ambigüedades con el cliente HTTP, la URL usada aquí incluye el protocolo: `http://localhost:8081`.
 
-H2 se eliminó por completo para ajustarse al requisito de usar MySQL como base de datos predeterminada. Ejecuta `mysql/init.sql` para crear las bases locales; cada servicio lee sus credenciales de variables de entorno y no las guarda en el código.
+MySQL es la base de datos predeterminada. Los perfiles `demo` de los microservicios usan H2 en disco. Ejecuta `crear-bases.sql` para crear las cuatro bases MySQL; cada servicio lee sus credenciales desde variables de entorno.
