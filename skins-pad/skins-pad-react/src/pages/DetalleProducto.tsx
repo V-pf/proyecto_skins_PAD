@@ -1,3 +1,4 @@
+import ReputacionVendedor from "../components/ReputacionVendedor";
 import { useOperacion } from "../lib/useOperacion";
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -155,8 +156,7 @@ export default function DetalleProducto() {
               className="img-fluid"
             />
             <figcaption className="mt-2 text-body-secondary small">
-              Imagen ilustrativa. El aspecto final depende del acabado real del
-              ítem.
+              {producto.inventarioId && !producto.demo ? "Imagen del inventario de Steam." : "Imagen ilustrativa. El aspecto final depende del acabado real del ítem."}
             </figcaption>
           </figure>
           {producto.imagenes?.slice(1).map(i=><img key={i.id} src={i.urlImagen} alt={producto.nombre} className="img-fluid mb-2" />)}
@@ -165,6 +165,7 @@ export default function DetalleProducto() {
               Sobre el vendedor
             </h2>
             <aside className="stat-tile">
+              {producto.vendedorId && <ReputacionVendedor id={producto.vendedorId} />}
               <address className="mb-2" style={{ fontStyle: "normal" }}>
                 <p className="mb-1">
                   <Link to={`/perfil/${producto.vendedorId}`}>{producto.vendedor}</Link>{" "}
@@ -192,6 +193,7 @@ export default function DetalleProducto() {
 
         <div className="col-lg-6">
           <p className="badge-grado mb-2">{grado.insignia}</p>
+          {producto.demo && <p className="alert alert-warning">Ítem de prueba del inventario de demostración.</p>}
           <h1 className="mb-1">
             {producto.nombre}{" "}
             {producto.stattrak && (

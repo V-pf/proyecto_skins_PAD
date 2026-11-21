@@ -1,3 +1,4 @@
+import ReputacionVendedor from "../components/ReputacionVendedor";
 import { useParams } from "react-router-dom";
 import { useTienda } from "../context/TiendaContext";
 import ListaProductos from "../components/ListaProductos";
@@ -14,6 +15,7 @@ export default function PerfilPublico() {
   return (
     <main className="container py-4">
       <h1>{cuenta.usuario}</h1>
+      <ReputacionVendedor id={cuenta.id} mostrarResenas />
       {cuenta.verificado && <p>Cliente verificado</p>}
       <h2 className="h5">Publicaciones activas ({activas.length})</h2>
       <ListaProductos productos={activas} />

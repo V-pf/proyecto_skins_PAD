@@ -75,7 +75,7 @@ public final class StatsCalculator {
   }
   private static Summary summary(List<Order> os, List<Product> cohort, boolean conversionAvailable) {
     var approved=os.stream().filter(o->o.payment.getEstado()==EstadoPago.APROBADO).toList();
-    var lines=sold(os); long count=approved.size();
+    var lines=sold(os); long count=approved.stream().map(o->o.payment.getId()).distinct().count();
     Long gross=sum(approved.stream().map(Order::gross).toList());
     Long net=approved.stream().anyMatch(o->o.lines.isEmpty())?null:net(lines);
     Long commission=gross==null || net==null || gross<net?null:gross-net;
@@ -103,7 +103,7 @@ public final class StatsCalculator {
     var products=productList.stream().collect(Collectors.toMap(Product::id,Function.identity()));
     var os=orders(ps,products,from,to,cat,method); var lines=sold(os); var created=cohort(productList,from,to,cat);
     var warnings=new ArrayList<String>();
-    warnings.add("Período por fecha de creación del pago (fecha); no existe fecha de aprobación. Zona asumida para DATETIME: America/Santiago.");
+    warnings.add("Ventas nuevas: fecha de finalización de custodia. Históricas: fecha de creación del pago, sin fecha verificable de entrega. Días civiles America/Santiago.");
     if(ps.stream().anyMatch(p->test(p,products)))warnings.add("Se excluyeron operaciones de prueba identificadas por [XAMPP], [DEMO] o referencia de carga.");
     if(lines.stream().anyMatch(l->l.net==null) || os.stream().anyMatch(o->o.payment.getEstado()==EstadoPago.APROBADO && o.lines.isEmpty()))warnings.add("Hay pagos sin desglose histórico completo: no se estima comisión ni se sustituye por el precio actual.");
     if(lines.stream().anyMatch(l->l.product==null))warnings.add("Hay referencias a publicaciones no disponibles. Se conservan sus unidades e importes históricos bajo Sin categoría disponible.");
@@ -124,11 +124,11 @@ public final class StatsCalculator {
     for(LocalDate d=daily?start:start.withDayOfMonth(1);!d.isAfter(to);d=daily?d.plusDays(1):d.plusMonths(1)) {
       final LocalDate bucket=d;
       var found=approved.stream().filter(o->daily?o.payment.getFecha().toLocalDate().equals(bucket):YearMonth.from(o.payment.getFecha()).equals(YearMonth.from(bucket))).toList();
-      timeline.add(new Bucket(d.toString(),sum(found.stream().map(Order::gross).toList()),found.size()));
+      timeline.add(new Bucket(d.toString(),sum(found.stream().map(Order::gross).toList()),found.stream().map(o->o.payment.getId()).distinct().count()));
     }
     var funnel=new ArrayList<Group>();
     for(var state:EstadoPago.values()) { var group=os.stream().filter(o->o.payment.getEstado()==state).toList();funnel.add(new Group(state.name(),state.name(),group.size(),sum(group.stream().map(Order::gross).toList()))); }
-    var methods=approved.stream().collect(Collectors.groupingBy(o->o.payment.getMetodo().name())).entrySet().stream().map(e->new Group(e.getKey(),e.getKey(),e.getValue().size(),sum(e.getValue().stream().map(Order::gross).toList())))
+    var methods=approved.stream().collect(Collectors.groupingBy(o->o.payment.getMetodo().name())).entrySet().stream().map(e->new Group(e.getKey(),e.getKey(),e.getValue().stream().map(o->o.payment.getId()).distinct().count(),sum(e.getValue().stream().map(Order::gross).toList())))
       .sorted(Comparator.comparing(Group::amount,Comparator.nullsLast(Comparator.reverseOrder()))).toList();
     var floatValues=lines.stream().filter(l->l.product!=null&&l.product.floatValor()!=null).mapToDouble(l->l.product.floatValor().doubleValue()).toArray();
     var prices=lines.stream().map(Line::net).filter(Objects::nonNull).sorted().toList(); int n=prices.size();
@@ -153,6 +153,6 @@ public final class StatsCalculator {
       groupLines(lines,l->l.product==null?"Sin dato":Objects.toString(l.product.desgaste(),"Sin dato"),l->l.product==null?"Sin dato":Objects.toString(l.product.desgaste(),"Sin dato")),
       groupLines(lines,l->l.product==null?"Sin dato":Objects.toString(l.product.grado(),"Sin dato"),l->l.product==null?"Sin dato":Objects.toString(l.product.grado(),"Sin dato")),
       groupLines(lines,l->l.product==null||l.product.stattrak()==null?"Sin dato":l.product.stattrak()?"StatTrak":"Sin StatTrak",l->l.product==null||l.product.stattrak()==null?"Sin dato":l.product.stattrak()?"StatTrak":"Sin StatTrak"),attrs,users,alerts,sales,
-      categories.stream().map(c->new Option(c.id(),c.nombre())).sorted(Comparator.comparing(Option::name)).toList(),warnings,errors);
+      categories.stream().map(c->new Option(c.id(),c.nombre())).sorted(Comparator.comparing(Option::name)).toList(),warnings,errors,List.of());
   }
 }

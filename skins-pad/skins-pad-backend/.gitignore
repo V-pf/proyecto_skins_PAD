@@ -8,3 +8,5 @@
 .env.*
 
 backups/
+
+.internal-api-key

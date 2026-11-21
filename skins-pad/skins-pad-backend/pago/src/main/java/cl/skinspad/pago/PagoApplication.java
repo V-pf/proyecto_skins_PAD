@@ -6,6 +6,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @SpringBootApplication
 @EnableFeignClients
+@org.springframework.scheduling.annotation.EnableScheduling
 public class PagoApplication {
     public static void main(String[] args) {
         SpringApplication.run(PagoApplication.class, args);

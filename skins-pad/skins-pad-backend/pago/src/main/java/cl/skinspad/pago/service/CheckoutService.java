@@ -217,7 +217,7 @@ public class CheckoutService {
             .map(CatalogoPagoClient.Skin::id)
             .collect(java.util.stream.Collectors.toSet());
     return pagos.findAll().stream()
-        .filter(p -> p.getEstado() == EstadoPago.APROBADO)
+        .filter(p -> p.getEstado() == EstadoPago.APROBADO && !Boolean.TRUE.equals(p.getCustodia()))
         .map(
             p ->
                 new Venta(

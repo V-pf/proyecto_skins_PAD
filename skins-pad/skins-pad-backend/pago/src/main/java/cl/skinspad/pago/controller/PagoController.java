@@ -14,12 +14,19 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PagoController {
     private final PagoService service;
+    private final cl.skinspad.pago.escrow.CustodiaCheckout custodia;
     private final cl.skinspad.pago.service.CheckoutService checkout;
-    @GetMapping("/mis-ventas") public List<cl.skinspad.pago.service.CheckoutService.Venta> ventas(@RequestHeader("X-Skins-Usuario") String id){return checkout.ventas(id);}
+    private final cl.skinspad.pago.escrow.OperacionRepository operaciones;
+    @GetMapping("/mis-ventas") public List<cl.skinspad.pago.service.CheckoutService.Venta> ventas(@RequestHeader("X-Skins-Usuario") String id){
+        var resultado=new java.util.ArrayList<>(checkout.ventas(id));
+        var grupos=operaciones.findByVendedorIdOrderByIdDesc(id).stream().filter(o->!o.isHistorica() && o.getEstado()==cl.skinspad.pago.escrow.EstadoOperacion.COMPLETADA).collect(java.util.stream.Collectors.groupingBy(cl.skinspad.pago.escrow.Operacion::getPagoId));
+        grupos.forEach((pagoId,lineas)->resultado.add(new cl.skinspad.pago.service.CheckoutService.Venta(pagoId,lineas.stream().map(cl.skinspad.pago.escrow.Operacion::getCompletada).max(java.util.Comparator.naturalOrder()).orElseThrow().atZone(java.time.ZoneId.of("America/Santiago")).toLocalDateTime(),EstadoPago.APROBADO,lineas.stream().map(cl.skinspad.pago.escrow.Operacion::getProductoId).toList(),lineas.stream().collect(java.util.stream.Collectors.toMap(cl.skinspad.pago.escrow.Operacion::getProductoId,o->java.math.BigDecimal.valueOf(o.getPrecio()))))));
+        return resultado;
+    }
     @GetMapping public List<Pago> listar(){return checkout.listar();}
     // La compra toma el identificador del comprador que entrega el gateway.
     @PostMapping("/checkout") @ResponseStatus(HttpStatus.CREATED)
-    public Pago checkout(@RequestHeader("X-Skins-Usuario") String id,@Valid @RequestBody CheckoutRequest r){return checkout.iniciar(id,r);}
+    public Pago checkout(@RequestHeader("X-Skins-Usuario") String id,@Valid @RequestBody CheckoutRequest r){return custodia.iniciar(id,r);}
     @GetMapping("/{id}/comprobante") public ComprobanteTransferencia ver(@PathVariable Long id){return service.comprobante(id);}
 
     @PostMapping

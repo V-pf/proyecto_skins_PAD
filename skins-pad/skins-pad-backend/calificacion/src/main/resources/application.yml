@@ -1,0 +1,25 @@
+server:
+  address: ${SERVICE_BIND_ADDRESS:127.0.0.1}
+  port: 8085
+spring:
+  application:
+    name: skins-pad-calificacion
+  datasource:
+    url: ${CALIFICACION_DB_URL:jdbc:mysql://localhost:3306/skinspad_calificacion?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Santiago&characterEncoding=UTF-8}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${CALIFICACION_DB_USERNAME:root}
+    password: ${CALIFICACION_DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: false
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+services:
+  usuario-url: ${USUARIO_URL:http://localhost:8087}
+  pago-url: ${PAGO_URL:http://localhost:8084}
+server.error.include-message: always

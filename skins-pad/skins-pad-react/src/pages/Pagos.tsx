@@ -1,3 +1,5 @@
+import Operaciones from "./Operaciones";
+import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import type { Pago } from "../lib/api";
@@ -101,36 +103,7 @@ function Fila({ p, admin }: { p: Pago; admin: boolean }) {
               Revisar comprobante
             </button>
           )}
-          <button disabled={ocupado} onClick={() => void accion(() => pagoService.confirmar(p.id))}>
-            Confirmar pago recibido
-          </button>
-          <button
-            disabled={ocupado}
-            onClick={() =>
-              void accion(() => pagoService.rechazar(p.id, {
-                motivo: "Rechazado por administración",
-              }))
-            }
-          >
-            Rechazar
-          </button>
         </div>
-      )}
-      {admin && p.estado==="APROBADO" && p.liquidado===false && <button disabled={ocupado} onClick={()=>void accion(()=>pagoService.confirmar(p.id))}>Completar acreditación de la venta</button>}
-      {admin && p.estado === "APROBADO" && (
-        <button
-          disabled={ocupado}
-          onClick={() => {
-            if (
-              window.confirm(
-                "¿Registrar el reembolso? Para pagos externos, gestiona primero la devolución con el proveedor.",
-              )
-            )
-              void accion(() => pagoService.reembolsar(p.id));
-          }}
-        >
-          Registrar reembolso
-        </button>
       )}
     </article>
   );
@@ -146,12 +119,12 @@ export default function Pagos({ gestion = false, mostrarTitulo = true }: { gesti
   const visibles = administrar
     ? pagos.filter(p => !filtroEstado || p.estado === filtroEstado).sort((a, b) => Number(b.estado === "PENDIENTE") - Number(a.estado === "PENDIENTE") || b.fecha.localeCompare(a.fecha))
     : pagos.filter(p => p.usuarioId === usuario?.id);
-  const pendientes = visibles.filter(p => p.estado === "PENDIENTE").length;
   if (cargando.pagos) return <p className="container py-4">Cargando pagos…</p>;
   return (
     <section className={administrar ? "" : "container py-4"}>
       {mostrarTitulo && <h2>{administrar ? "Gestor de Pagos" : "Mis pagos"}</h2>}
-      {administrar && <p role="status" className={pendientes ? "alert alert-warning" : "text-body-secondary"}>{pendientes ? `${pendientes} pagos pendientes de aprobación. Revisa el comprobante y confirma el pago recibido.` : "No hay pagos pendientes de aprobación."}</p>}
+      {administrar && <Operaciones vista="excepciones" integrado/>}
+      {!administrar&&<p><Link to="/cliente/compras">Ver entregas, confirmar recepción o abrir una disputa →</Link></p>}
       {administrar && <label className="d-block mb-3">Estado<select className="form-select" value={filtroEstado} onChange={e=>{const next=new URLSearchParams(params); e.target.value?next.set("estado",e.target.value):next.delete("estado");setParams(next);}}><option value="">Todos</option>{["PENDIENTE","APROBADO","RECHAZADO","REEMBOLSADO"].map(e=><option key={e}>{e}</option>)}</select></label>}
       {state?.mensaje && <p role="status">{state.mensaje}</p>}
       <button
@@ -161,9 +134,11 @@ export default function Pagos({ gestion = false, mostrarTitulo = true }: { gesti
         Actualizar
       </button>
       {!visibles.length && <p>No hay pagos registrados.</p>}
+      <details open={!administrar}><summary>{administrar?"Pagos y revisión de comprobantes":"Historial de pagos"}</summary>
       {visibles.map((p) => (
         <Fila key={p.id} p={p} admin={administrar} />
       ))}
+      </details>
     </section>
   );
 }

@@ -14,6 +14,13 @@ class AccesoFilterTest {
             null, ruta, metodo, Map.of("id", "u1", "rol", rol, "username", "cuenta"), Map.of(), "token");
         return Boolean.TRUE.equals(resultado.block());
     }
+    @Test void inventarioYVinculacionSonDeClientes() {
+        assertTrue(permite("/api/inventario", "GET", "cliente"));
+        assertTrue(permite("/api/inventario/publicaciones", "POST", "cliente"));
+        assertTrue(permite("/api/steam/vincular", "POST", "cliente"));
+        assertFalse(permite("/api/inventario/publicaciones", "POST", "admin"));
+    }
+    @Test void verificarPagoSoloAdminYPost(){assertTrue(permite("/api/operaciones/pagos/1/verificar","POST","admin"));assertFalse(permite("/api/operaciones/pagos/1/verificar","POST","cliente"));assertFalse(permite("/api/operaciones/pagos/1/verificar","GET","admin"));}
     @Test void estadisticasSoloPermiteGetAdministrativo() {
         assertTrue(permite("/api/admin/stats", "GET", "admin"));
         assertFalse(permite("/api/admin/stats", "GET", "cliente"));
@@ -29,7 +36,7 @@ class AccesoFilterTest {
     @Test void administradorConservaGestionesYClientePuedeComprar() {
         assertTrue(permite("/api/usuarios/u1/estado", "PATCH", "admin"));
         assertTrue(permite("/api/productos/1", "DELETE", "admin"));
-        assertTrue(permite("/api/pagos/1/confirmar", "POST", "admin"));
+        assertFalse(permite("/api/pagos/1/confirmar", "POST", "admin"));
         assertTrue(permite("/api/categorias", "POST", "admin"));
         assertTrue(permite("/api/pagos/checkout", "POST", "cliente"));
     }

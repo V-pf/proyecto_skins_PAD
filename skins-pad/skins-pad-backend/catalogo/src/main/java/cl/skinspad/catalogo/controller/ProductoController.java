@@ -40,11 +40,15 @@ public class ProductoController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Producto crear(@Valid @RequestBody ProductoRequest r) {
-        return service.crearProducto(r);
+        var req=((org.springframework.web.context.request.ServletRequestAttributes)org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes()).getRequest();
+        if(!java.util.Objects.equals(req.getAttribute("actor"),r.vendedorId()) || r.estado()!=EstadoProducto.PENDIENTE_APROBACION)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN);
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.GONE, "Publica seleccionando un ítem de tu inventario Steam.");
     }
 
     @PutMapping("/{id}")
     public Producto actualizar(@PathVariable Long id, @Valid @RequestBody ProductoRequest r) {
+        var actual=service.buscarPorId(id);
+        if(!java.util.Objects.equals(actual.getVendedorId(),r.vendedorId()) || (r.estado()!=actual.getEstado() && r.estado()!=EstadoProducto.ELIMINADO))throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN);
         return service.actualizarProducto(id, r);
     }
 
@@ -55,7 +59,7 @@ public class ProductoController {
 
     @PatchMapping("/{id}/estado")
     public Producto estado(@PathVariable Long id, @Valid @RequestBody EstadoRequest r) {
-        return service.actualizarEstado(id, r.estado());
+        return service.actualizarEstado(id, r.estado(), r.motivoRechazo());
     }
 
     @DeleteMapping("/{id}")

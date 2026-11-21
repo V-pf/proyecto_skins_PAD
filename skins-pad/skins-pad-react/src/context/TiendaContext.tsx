@@ -100,7 +100,11 @@ export function TiendaProvider({ children }: { children: ReactNode }) {
         await listaProductos.recargar();
         return;
       }
-      const nuevo = await productoService.actualizar(id, body({ ...actual, ...parche }));
+      const esModeracion = usuario?.rol === "admin" &&
+        (parche.estado === "activa" || parche.estado === "rechazada");
+      const nuevo = esModeracion
+        ? await productoService.cambiarEstado(id, estados[parche.estado!], parche.motivoRechazo)
+        : await productoService.actualizar(id, body({ ...actual, ...parche }));
       setProductos((prev) => prev.map((p) => (p.id === id ? nuevo : p)));
       await listaProductos.recargar();
     },

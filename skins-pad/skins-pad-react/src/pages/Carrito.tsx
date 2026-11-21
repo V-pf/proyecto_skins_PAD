@@ -7,8 +7,9 @@ import Modal from "../components/Modal";
 import { useAuth } from "../context/AuthContext";
 import { useCarrito } from "../context/CarritoContext";
 import { useTienda } from "../context/TiendaContext";
+import { useToast } from "../context/ToastContext";
 import { DESGASTES, imagenDe } from "../lib/catalogos";
-import { formatoCLP, hoyISO } from "../lib/formato";
+import { formatoCLP } from "../lib/formato";
 
 const METODOS = [
   { valor: "Tarjeta", etiqueta: "Tarjeta de Crédito / Débito" },
@@ -21,8 +22,9 @@ export default function Carrito() {
   const { ejecutar, ocupado } = useOperacion();
   const { usuario } = useAuth();
   const { cargando: cargaTienda } = useTienda();
-  const { lineas, totales, cantidadTotal, quitar, comprar, cargando } =
+  const { lineas, totales, cantidadTotal, quitar, vaciar, comprar, cargando } =
     useCarrito();
+  const { mostrar } = useToast();
   const navigate = useNavigate();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [metodo, setMetodo] = useState("Tarjeta");
@@ -56,9 +58,8 @@ export default function Carrito() {
       }
       const mensaje = await comprar(lineas.map((l) => l.producto.id), metodo);
       setModalAbierto(false);
-      navigate("/cliente/pagos", {
-        state: { mensaje },
-      });
+      mostrar(mensaje, "info");
+      navigate("/cliente/compras");
     });
   }
 

@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Registro from "./pages/Registro";
 import Carrito from "./pages/Carrito";
 import PanelCliente from "./pages/PanelCliente";
+import Operaciones from "./pages/Operaciones";
 import Pagos from "./pages/Pagos";
 import Vender from "./pages/Vender";
 import MisPublicaciones from "./pages/MisPublicaciones";
@@ -47,7 +48,10 @@ export default function App() {
         <Route path="/cliente/perfil" element={<RutaProtegida><Perfil/></RutaProtegida>}/>
         <Route path="/cliente/carrito" element={<Carrito />} />
         <Route path="/cliente/panel" element={<RutaProtegida><PanelCliente /></RutaProtegida>} />
+        <Route path="/cliente/compras" element={<RutaProtegida><Operaciones vista="compras"/></RutaProtegida>}/>
+        <Route path="/cliente/ventas" element={<RutaProtegida><Operaciones vista="ventas"/></RutaProtegida>}/>
         <Route path="/cliente/pagos" element={<RutaProtegida><Pagos /></RutaProtegida>} />
+        <Route path="/cliente/inventario" element={<RutaProtegida><Vender /></RutaProtegida>} />
         <Route path="/cliente/vender" element={<RutaProtegida><Vender /></RutaProtegida>} />
         <Route path="/cliente/publicaciones" element={<RutaProtegida><MisPublicaciones /></RutaProtegida>} />
 

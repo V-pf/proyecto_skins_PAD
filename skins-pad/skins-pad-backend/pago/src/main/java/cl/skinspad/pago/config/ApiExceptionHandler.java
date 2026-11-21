@@ -30,6 +30,9 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(FeignException.class)
     public ResponseEntity<Map<String, Object>> upstream(FeignException ex) {
+        if (ex.status() == 401 || ex.status() == 403) {
+            return response(HttpStatus.BAD_GATEWAY, "El servicio dependiente rechazó la credencial interna. Reinicia usuario, catálogo y pagos con la misma configuración.");
+        }
         if(ex.status()==409)return response(HttpStatus.CONFLICT,"La operación no pudo completarse. Comprueba que la publicación siga disponible.");
         if (ex.status() == 404) {
             return response(HttpStatus.NOT_FOUND, "El usuario o recurso solicitado no existe en el servicio dependiente");

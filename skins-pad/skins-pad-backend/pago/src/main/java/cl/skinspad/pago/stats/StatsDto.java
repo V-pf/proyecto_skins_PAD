@@ -8,7 +8,9 @@ public record StatsDto(String timezone, String from, String to, String compareFr
     List<Rank> skins, List<Rank> sellers, List<Group> methods, List<Group> funnel,
     List<Group> publicationStates, List<Group> rejectionReasons, List<Group> wear, List<Group> grades,
     List<Group> stattrak, Attributes attributes, Users users, List<Alert> alerts, List<Sale> sales,
-    List<Option> categoryOptions, List<String> warnings, Map<String,String> errors) {
+    List<Option> categoryOptions, List<String> warnings, Map<String,String> errors, List<Group> custody) {
+  public StatsDto withCustody(List<Group> value){return new StatsDto(timezone,from,to,compareFrom,compareTo,current,previous,timeline,categories,skins,sellers,methods,funnel,publicationStates,rejectionReasons,wear,grades,stattrak,attributes,users,alerts,sales,categoryOptions,warnings,errors,value);}
+
   public record Summary(Long gross, Long net, Long commission, long operations, Long ticket,
       long units, Double conversion, Double averageCommission, long created) {}
   public record Bucket(String date, Long gross, long operations) {}

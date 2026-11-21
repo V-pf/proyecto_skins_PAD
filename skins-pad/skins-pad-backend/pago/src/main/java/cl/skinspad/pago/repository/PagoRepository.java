@@ -8,6 +8,12 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     @org.springframework.data.jpa.repository.Query("select p from Pago p where (:desde is null or p.fecha >= :desde) and p.fecha < :hasta order by p.fecha")
     List<Pago> findForStats(@org.springframework.data.repository.query.Param("desde") java.time.LocalDateTime desde,
         @org.springframework.data.repository.query.Param("hasta") java.time.LocalDateTime hasta);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select p from Pago p where p.id=:id")
+    Optional<Pago> bloquear(@org.springframework.data.repository.query.Param("id") Long id);
+    List<Pago> findByCustodiaTrueAndEtapaCustodiaNot(String etapa);
+    @org.springframework.data.jpa.repository.Query("select p.id from Pago p where (p.custodia is null or p.custodia = false) and p.productoIds is not empty and not exists (select o.id from Operacion o where o.pagoId = p.id) order by p.id")
+    List<Long> buscarHistoricosSinOperaciones();
     Optional<Pago> findByPedidoId(String pedidoId);
     List<Pago> findAllByUsuarioIdOrderByFechaDesc(String usuarioId);
 }
