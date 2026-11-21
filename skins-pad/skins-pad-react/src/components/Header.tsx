@@ -1,3 +1,4 @@
+import AvisosSoporte from "./soporte/AvisosSoporte";
 import { useEffect, useState } from "react";
 
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -48,7 +49,7 @@ export default function Header() {
             <span className="navbar-toggler-icon"></span>
           </button>
           <div className={`collapse navbar-collapse${menuAbierto ? " show" : ""}`} id="menu-principal">
-            {usuario?.rol === "admin" ? <ul className="navbar-nav me-auto"><li className="nav-item"><NavLink className={claseLink} to="/admin/panel">Panel de administrador</NavLink></li></ul> : <ul className="navbar-nav me-auto">
+            {usuario?.rol === "admin" ? <ul className="navbar-nav me-auto"><li className="nav-item"><NavLink className={claseLink} to="/admin/panel">Panel de administrador</NavLink></li><li className="nav-item"><NavLink className={claseLink} to="/admin/soporte">Soporte y reportes</NavLink></li></ul> : <ul className="navbar-nav me-auto">
               <li className="nav-item">
                 <NavLink className={claseLink} to="/catalogo">
                   Catálogo
@@ -71,6 +72,7 @@ export default function Header() {
               </li>
             </ul>}
             <ul className="navbar-nav align-items-lg-center">
+              {usuario&&<li className="nav-item"><AvisosSoporte/></li>}
               {usuario?.rol !== "admin" && <li className="nav-item">
                 <NavLink className={claseLink} to="/cliente/carrito">
                   Carrito{" "}
@@ -97,7 +99,7 @@ export default function Header() {
                         </Link>
                       </li>
                       <li>
-                        <Link className="dropdown-item" to="/cliente/compras">Mis compras</Link><Link className="dropdown-item" to="/cliente/ventas">Mis ventas</Link>
+                        <Link className="dropdown-item" to="/cliente/soporte">Soporte y mis reportes</Link><Link className="dropdown-item" to="/cliente/compras">Mis compras</Link><Link className="dropdown-item" to="/cliente/ventas">Mis ventas</Link>
                         <Link className="dropdown-item" to="/cliente/pagos">
                           Mis pagos
                         </Link>

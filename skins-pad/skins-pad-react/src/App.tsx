@@ -16,6 +16,11 @@ import Vender from "./pages/Vender";
 import MisPublicaciones from "./pages/MisPublicaciones";
 import AdminPanel from "./pages/AdminPanel";
 
+import SoporteInicio from './pages/soporte/SoporteInicio';
+import TicketDetalle from './pages/soporte/TicketDetalle';
+import MisReportes from './pages/soporte/MisReportes';
+import AdminSoporte from './pages/soporte/AdminSoporte';
+import ReporteAdmin from './pages/soporte/ReporteAdmin';
 import Billetera from "./pages/Billetera";
 import Perfil from "./pages/Perfil";
 import PerfilPublico from "./pages/PerfilPublico";
@@ -44,6 +49,13 @@ export default function App() {
         <Route path="/registro" element={<Registro />} />
 
         <Route path="/perfil/:id" element={<PerfilPublico/>}/>
+        <Route path="/cliente/soporte" element={<RutaProtegida><SoporteInicio/></RutaProtegida>}/>
+        <Route path="/cliente/soporte/tickets/:id" element={<RutaProtegida><TicketDetalle/></RutaProtegida>}/>
+        <Route path="/cliente/soporte/reportes" element={<RutaProtegida><MisReportes/></RutaProtegida>}/>
+        <Route path="/cliente/soporte/reportes/:id" element={<RutaProtegida><MisReportes/></RutaProtegida>}/>
+        <Route path="/admin/soporte" element={<RutaProtegida soloAdmin><AdminSoporte/></RutaProtegida>}/>
+        <Route path="/admin/soporte/tickets/:id" element={<RutaProtegida soloAdmin><TicketDetalle/></RutaProtegida>}/>
+        <Route path="/admin/soporte/reportes/:id" element={<RutaProtegida soloAdmin><ReporteAdmin/></RutaProtegida>}/>
         <Route path="/cliente/billetera" element={<RutaProtegida><Billetera/></RutaProtegida>}/>
         <Route path="/cliente/perfil" element={<RutaProtegida><Perfil/></RutaProtegida>}/>
         <Route path="/cliente/carrito" element={<Carrito />} />
@@ -51,7 +63,6 @@ export default function App() {
         <Route path="/cliente/compras" element={<RutaProtegida><Operaciones vista="compras"/></RutaProtegida>}/>
         <Route path="/cliente/ventas" element={<RutaProtegida><Operaciones vista="ventas"/></RutaProtegida>}/>
         <Route path="/cliente/pagos" element={<RutaProtegida><Pagos /></RutaProtegida>} />
-        <Route path="/cliente/inventario" element={<RutaProtegida><Vender /></RutaProtegida>} />
         <Route path="/cliente/vender" element={<RutaProtegida><Vender /></RutaProtegida>} />
         <Route path="/cliente/publicaciones" element={<RutaProtegida><MisPublicaciones /></RutaProtegida>} />
 

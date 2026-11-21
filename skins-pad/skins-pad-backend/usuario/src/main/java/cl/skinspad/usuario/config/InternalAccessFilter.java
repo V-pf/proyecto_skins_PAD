@@ -5,7 +5,7 @@ public class InternalAccessFilter extends org.springframework.web.filter.OncePer
  private final String key;
  public InternalAccessFilter(InternalApiKey credential){this.key=credential.value();}
  protected void doFilterInternal(HttpServletRequest r,HttpServletResponse s,FilterChain c)throws ServletException,IOException{
-   boolean internal=r.getRequestURI().contains("/saldo/") || r.getRequestURI().equals("/api/productos/reservas");
+   boolean internal=r.getRequestURI().startsWith("/api/internal/moderacion/") || r.getRequestURI().contains("/saldo/") || r.getRequestURI().equals("/api/productos/reservas");
    if(internal){String provided=r.getHeader("X-Skins-Internal");if(key.isBlank()||provided==null||!MessageDigest.isEqual(key.getBytes(StandardCharsets.UTF_8),provided.getBytes(StandardCharsets.UTF_8))){s.sendError(403);return;}}
    c.doFilter(r,s);
  }

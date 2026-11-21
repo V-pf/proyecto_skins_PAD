@@ -1,0 +1,1 @@
+export default function EstadoBadge({estado}:{estado:string}){const urgente=['URGENTE','ALTA'].includes(estado);return <span className={'badge '+(urgente?'text-bg-warning':'text-bg-secondary')}>{estado.split('_').join(' ')}</span>}

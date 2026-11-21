@@ -1,8 +1,6 @@
 import type { Desgaste, EstadoPublicacion, Grado, Producto, Tipo } from "../types";
 
 export const TIPOS: { valor: Tipo; etiqueta: string; descripcion: string }[] = [
-  { valor: "escopeta", etiqueta: "Escopetas", descripcion: "Armas de corto alcance." },
-  { valor: "ametralladora", etiqueta: "Ametralladoras", descripcion: "Armas de fuego de alta capacidad." },
   { valor: "rifle", etiqueta: "Rifles", descripcion: "Armas de fuego automáticas de media distancia." },
   { valor: "francotirador", etiqueta: "Francotiradores", descripcion: "Rifles de largo alcance con mira telescópica." },
   { valor: "pistola", etiqueta: "Pistolas", descripcion: "Armas secundarias, desde las básicas hasta las más codiciadas." },
@@ -50,7 +48,7 @@ export function infoGrado(grado: Grado) {
 }
 
 export function imagenDe(tipo: Tipo): string {
-  return `/img/arma-${tipo === "escopeta" || tipo === "ametralladora" ? "rifle" : tipo}.svg`;
+  return `/img/arma-${tipo}.svg`;
 }
 
 export function subtituloProducto(p: Producto): string {

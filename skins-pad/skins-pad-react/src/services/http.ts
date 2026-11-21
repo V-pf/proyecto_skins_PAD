@@ -42,3 +42,9 @@ export async function solicitar<T>(
   }
   return (respuesta.status === 204 || respuesta.data === "" ? undefined : respuesta.data) as T;
 }
+
+export async function descargarAdjunto(id:number,nombre:string,servicio:"tickets"|"reportes"):Promise<void>{
+ const respuesta=await cliente.get('/'+servicio+'/adjuntos/'+id,{responseType:'blob'});
+ if(respuesta.status!==200)throw new Error('No se pudo descargar la evidencia ('+respuesta.status+').');
+ const url=URL.createObjectURL(respuesta.data);const enlace=document.createElement('a');enlace.href=url;enlace.download=nombre;enlace.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}

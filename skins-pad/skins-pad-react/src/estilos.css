@@ -251,3 +251,6 @@ details[open] > summary { color: var(--acento); }
 
 .admin-panel .nav-tabs .nav-link { color: var(--texto-tenue); }
 .admin-panel .nav-tabs .nav-link.active { background: var(--panel); color: var(--acento); border-color: var(--linea); }
+
+/* Soporte: espacios y contraste consistentes con Bootstrap. */
+.soporte-dialogo{width:min(760px,94vw);max-height:90vh;background:var(--bs-body-bg,#111820);color:var(--bs-body-color,#f8f9fa);border:1px solid #8997a8;border-radius:12px;padding:24px}.soporte-dialogo::backdrop{background:#000b}.soporte-texto{white-space:pre-wrap;overflow-wrap:anywhere}.soporte-mensaje{padding:16px;margin:16px 0;border:1px solid #59687c;border-radius:8px}.soporte-contenido{max-width:1100px}.soporte-contenido p,.soporte-dialogo p{font-size:14px}.soporte-contenido label{font-weight:600}.soporte-contenido input,.soporte-contenido textarea,.soporte-contenido select{font-weight:400}

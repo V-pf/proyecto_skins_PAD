@@ -7,9 +7,8 @@ import Modal from "../components/Modal";
 import { useAuth } from "../context/AuthContext";
 import { useCarrito } from "../context/CarritoContext";
 import { useTienda } from "../context/TiendaContext";
-import { useToast } from "../context/ToastContext";
 import { DESGASTES, imagenDe } from "../lib/catalogos";
-import { formatoCLP } from "../lib/formato";
+import { formatoCLP, hoyISO } from "../lib/formato";
 
 const METODOS = [
   { valor: "Tarjeta", etiqueta: "Tarjeta de Crédito / Débito" },
@@ -21,10 +20,9 @@ const METODOS = [
 export default function Carrito() {
   const { ejecutar, ocupado } = useOperacion();
   const { usuario } = useAuth();
-  const { cargando: cargaTienda } = useTienda();
-  const { lineas, totales, cantidadTotal, quitar, vaciar, comprar, cargando } =
+  const { pagar, cargando: cargaTienda } = useTienda();
+  const { lineas, totales, cantidadTotal, quitar, vaciar, cargando } =
     useCarrito();
-  const { mostrar } = useToast();
   const navigate = useNavigate();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [metodo, setMetodo] = useState("Tarjeta");
@@ -52,14 +50,22 @@ export default function Carrito() {
           return;
         }
       }
-      if (lineas.some((l) => l.producto.estado !== "activa")) {
-        setError("Quita las skins que ya no están disponibles para continuar.");
-        return;
+      // Primero se registra el pago. Si luego falla el vaciado, se avisa que el pago ya quedó registrado.
+      const pago = await pagar(
+        lineas.map((l) => l.producto.id),
+        metodo,
+      );
+      try {
+        await vaciar();
+      } catch {
+        window.alert(
+          "El pago se registró. Revisa el carrito antes de volver a comprar.",
+        );
       }
-      const mensaje = await comprar(lineas.map((l) => l.producto.id), metodo);
       setModalAbierto(false);
-      mostrar(mensaje, "info");
-      navigate("/cliente/compras");
+      navigate("/cliente/compras", {
+        state: { mensaje: "Pago #" + pago.id + " registrado: " + pago.estado },
+      });
     });
   }
 
@@ -215,7 +221,6 @@ export default function Carrito() {
             <button
               type="button"
               className="btn btn-success"
-              disabled={ocupado || !lineas.length || lineas.some((l) => l.producto.estado !== "activa")}
               onClick={confirmarPago}
             >
               Pagar y finalizar
