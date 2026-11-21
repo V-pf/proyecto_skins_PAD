@@ -6,7 +6,7 @@ React consulta el gateway en el puerto 8090. Usuario usa el 8087, catálogo el 8
 
 Requisitos: Java 17, Maven 3.9, Node.js y npm.
 
-1. Descomprime los dos ZIP.
+1. Abre la carpeta `skins-pad/skins-pad-backend` del repositorio.
 2. Dentro de la carpeta del backend, abre PowerShell y ejecuta:
 
    ```powershell
