@@ -14,12 +14,6 @@ class AccesoFilterTest {
             null, ruta, metodo, Map.of("id", "u1", "rol", rol, "username", "cuenta"), Map.of(), "token");
         return Boolean.TRUE.equals(resultado.block());
     }
-    @Test void inventarioYVinculacionSonDeClientes() {
-        assertTrue(permite("/api/inventario", "GET", "cliente"));
-        assertTrue(permite("/api/inventario/publicaciones", "POST", "cliente"));
-        assertTrue(permite("/api/steam/vincular", "POST", "cliente"));
-        assertFalse(permite("/api/inventario/publicaciones", "POST", "admin"));
-    }
     @Test void verificarPagoSoloAdminYPost(){assertTrue(permite("/api/operaciones/pagos/1/verificar","POST","admin"));assertFalse(permite("/api/operaciones/pagos/1/verificar","POST","cliente"));assertFalse(permite("/api/operaciones/pagos/1/verificar","GET","admin"));}
     @Test void estadisticasSoloPermiteGetAdministrativo() {
         assertTrue(permite("/api/admin/stats", "GET", "admin"));
@@ -40,4 +34,6 @@ class AccesoFilterTest {
         assertTrue(permite("/api/categorias", "POST", "admin"));
         assertTrue(permite("/api/pagos/checkout", "POST", "cliente"));
     }
+
+ @Test void soporteProtegeRutasAdministrativas(){for(String ruta:java.util.List.of("/api/admin/tickets","/api/admin/reportes/1/resolver","/api/admin/soporte/stats","/api/admin/soporte/precios")){assertFalse(permite(ruta,"GET","cliente"));assertFalse(permite(ruta,"POST","cliente"));assertTrue(permite(ruta,"GET","admin"));}assertTrue(permite("/api/tickets","POST","cliente"));assertFalse(permite("/api/tickets","POST","admin"));assertTrue(permite("/api/reportes/mis-reportes","GET","cliente"));}
 }

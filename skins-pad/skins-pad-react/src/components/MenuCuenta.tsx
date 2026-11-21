@@ -6,18 +6,21 @@ interface Enlace {
 }
 
 const CLIENTE: Enlace[] = [
+  {a:"/cliente/soporte",texto:"Soporte"},
+  {a:"/cliente/soporte/reportes",texto:"Mis reportes"},
   { a: "/cliente/compras", texto: "Mis compras" },
   { a: "/cliente/ventas", texto: "Mis ventas" },
   { a: "/cliente/panel", texto: "Resumen" },
   { a: "/cliente/pagos", texto: "Mis pagos" },
   { a: "/cliente/carrito", texto: "Carrito" },
-  { a: "/cliente/inventario", texto: "Mi inventario / Vender" },
+  { a: "/cliente/vender", texto: "Vender una skin" },
   { a: "/cliente/publicaciones", texto: "Mis publicaciones" },
   { a: "/cliente/billetera", texto: "Billetera y retiros" },
   { a: "/cliente/perfil", texto: "Editar perfil" },
 ];
 
 const ADMIN: Enlace[] = [
+  {a:"/admin/soporte",texto:"Soporte y reportes"},
   { a: "/admin/estadisticas", texto: "Estadísticas" },
   { a: "/admin/pagos", texto: "Gestión de Pagos" },
   { a: "/admin/web", texto: "Gestión web" },

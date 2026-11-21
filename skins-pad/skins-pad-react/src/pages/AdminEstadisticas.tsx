@@ -1,3 +1,4 @@
+import AlertasSoporte from "../components/soporte/AlertasSoporte";
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -14,6 +15,32 @@ import '../components/stats/stats.css';
 
 const colors=['#63b3ff','#f9c969','#67d9bf','#c6a0ff','#ff9cb0','#a3d978','#ffae78','#cbd5e1'];
 function GroupTable({groups,amount=true}:{groups:Group[];amount?:boolean}) {return <table className="stats-group-table"><thead><tr><th>Grupo</th><th>Cantidad</th>{amount&&<th>Monto</th>}</tr></thead><tbody>{groups.map(g=><tr key={g.key}><td>{labels[g.label]??g.label}</td><td>{number(g.count)}</td>{amount&&<td>{money(g.amount)}</td>}</tr>)}</tbody></table>;}
+function ResumenCustodia({ groups }: { groups: Group[] }) {
+  if (!groups.length) return <p>Sin datos para esta selección.</p>;
+  const retenido = groups.find(g => g.key === 'EN_CUSTODIA');
+  const activos = groups.filter(g => g.key !== 'EN_CUSTODIA' && (g.count > 0 || !!g.amount));
+  if (!activos.length && !retenido?.count && !retenido?.amount) {
+    return <p className="mb-0">Sin operaciones en el período.</p>;
+  }
+  const excepciones = activos.filter(g => ['EN_DISPUTA', 'CONGELADA'].includes(g.key))
+    .reduce((total, g) => total + g.count, 0);
+  const nombres: Record<string, string> = {
+    PAGO_PENDIENTE: 'Pago pendiente', PAGO_RETENIDO: 'Pago retenido',
+    ACEPTADA_POR_VENDEDOR: 'Aceptada por el vendedor', ENTREGADA: 'Entregada',
+    EN_DISPUTA: 'En disputa', CONGELADA: 'Congelada', COMPLETADA: 'Completada',
+    REEMBOLSADA: 'Reembolsada', CANCELADA: 'Cancelada',
+    EXPIRADA: 'Expirada', RECHAZADA_POR_VENDEDOR: 'Rechazada por el vendedor',
+  };
+  return <>
+    <p><strong>{money(retenido?.amount ?? null)}</strong> retenidos
+      {excepciones > 0 && <> · <Link to="/admin/pagos">Revisar {number(excepciones)} {excepciones === 1 ? 'caso' : 'casos'} en disputa o congelación</Link></>}
+    </p>
+    {activos.length > 0 && <details className="stats-accessible-data">
+      <summary>Ver desglose</summary>
+      <GroupTable groups={activos.map(g => ({ ...g, label: nombres[g.key] ?? g.label }))}/>
+    </details>}
+  </>;
+}
 export default function AdminEstadisticas() {
   const [params,setParams]=useSearchParams();
   const [measure,setMeasure]=useState<'gross'|'operations'>('gross');
@@ -36,13 +63,13 @@ export default function AdminEstadisticas() {
     {key:'units',label:'Skins vendidas',kind:'count',help:'Skins COMPLETADAS; histórico aprobado conservado. Se contabilizan unidades aunque el nombre de la publicación contenga otra palabra; no se infiere el estado desde el nombre.'},
     {key:'conversion',label:'Conversión de publicaciones',kind:'percent',help:'Proxy de cohorte: publicaciones creadas en el período que aparecen en una compra aprobada creada en ese período / publicaciones creadas. No es conversión desde aprobación de publicación: esa fecha no existe. Sin método de pago y sin cohorte vacía.'},
   ];
-  return <div className="stats-dashboard">
+  return <div className="stats-dashboard"><AlertasSoporte/>
     <div className="stats-heading"><p>Actividad comercial y control de operaciones <span>· CLP · America/Santiago</span></p><button className="stats-button" disabled={loading||!!load.error||!data?.sales.length} onClick={()=>exportCsv([['Operación','Publicación ID','Nombre','Fecha de creación pago (America/Santiago)','Categoría','Vendedor ID','Método','Sin comisión CLP','Bruto atribuido CLP','Estado'],...data!.sales.map(r=>[r.paymentId,r.productId,r.name,r.date,r.category,r.sellerId,r.method,r.net,r.gross,r.state])])}>↓ Exportar CSV</button></div>
     <PeriodFilter params={effective} setParams={setParams} categories={options}/>
     <p className="stats-period-note">{data?`${data.from??'Inicio del historial'} → ${data.to}`:'Consultando período'} · Fecha de finalización (histórico: creación del pago){data?.previous&&` · Comparación: ${data.compareFrom} → ${data.compareTo}`}</p>
     {load.error&&<div className="stats-error" role="alert">{load.error} <button className="stats-button" onClick={retry}>Reintentar</button></div>}
     <div className="stats-kpis">{kpis.map(k=>{const value=data?.current[k.key]??null;return <KpiCard key={k.key} label={k.label} raw={value} previous={data?.previous?.[k.key]} compare={compare} help={k.help} loading={loading} error={k.key==='conversion'?catalogError:moneyError} value={k.kind==='money'?money(value):value===null?'No disponible':number(value)+(k.kind==='percent'?'%':'')} detail={k.key==='gross'&&data?`Sin comisión: ${money(data.current.net)}`:k.key==='commission'&&data?`Promedio: ${number(data.current.averageCommission)}${data.current.averageCommission==null?'':'% del precio'}`:undefined}/>;})}</div>
-    <ChartCard {...base} title="Custodia y entregas" help="Operaciones por skin creadas en el período. Total retenido incluye aceptadas, entregadas, disputas y congeladas con fondos. Expiradas y rechazadas son causas de reembolso, no importes adicionales." error={moneyError}><GroupTable groups={data?.custody??[]}/><Link to="/admin/pagos">Revisar excepciones →</Link></ChartCard>
+    <ChartCard {...base} title="Custodia y entregas" help="Operaciones por skin creadas en el período. Total retenido incluye aceptadas, entregadas, disputas y congeladas con fondos. Expiradas y rechazadas son causas de reembolso, no importes adicionales." error={moneyError}><ResumenCustodia groups={data?.custody??[]}/></ChartCard>
     <div className="stats-charts">
       <ChartCard {...base} title="Evolución de ventas" help="Ventas nuevas agrupadas por finalización; históricas por creación del pago. Días y meses civiles de Santiago. Los períodos sin operaciones muestran cero." error={moneyError} empty={!data?.current.operations} actions={<label className="stats-inline-label">Ver<select aria-label="Métrica del gráfico temporal" value={measure} onChange={e=>setMeasure(e.target.value as typeof measure)}><option value="gross">Monto bruto</option><option value="operations">Operaciones</option></select></label>}>
         <div className="stats-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={data?.timeline??[]} accessibilityLayer margin={{top:12,right:12,bottom:12,left:16}}><CartesianGrid vertical={false} stroke="#344357"/><XAxis dataKey="date" stroke="#b9c7d8" tickFormatter={v=>dateLabel(String(v),monthly)} minTickGap={28}/><YAxis width={92} stroke="#b9c7d8" tickFormatter={v=>measure==='gross'?money(Number(v)):number(Number(v))} allowDecimals={false}/><Tooltip contentStyle={{background:'#172333',border:'1px solid #697e99',color:'#f2f6fc'}} labelFormatter={v=>dateLabel(String(v),monthly)} formatter={v=>[measure==='gross'?money(Number(v)):number(Number(v)),measure==='gross'?'Ventas brutas':'Operaciones']}/><Bar dataKey={measure} fill="#63b3ff" radius={[4,4,0,0]} maxBarSize={56} isAnimationActive={false}/></BarChart></ResponsiveContainer></div>

@@ -29,6 +29,8 @@ public class AccesoFilter implements GlobalFilter, Ordered {
 
   @Value("${PAGO_URL:http://localhost:8084}")
   String pagos;
+  @Value("${TICKET_URL:http://localhost:8085}") String tickets;
+  @Value("${REPORTE_URL:http://localhost:8086}") String reportes;
 
   public AccesoFilter(ObjectMapper mapper) {
     this.mapper = mapper;
@@ -51,12 +53,10 @@ public class AccesoFilter implements GlobalFilter, Ordered {
     var request = x.getRequest();
     String p = request.getPath().value(), m = request.getMethod().name();
     // Permite consultar el catálogo y los perfiles públicos, registrarse e iniciar sesión.
-    if (p.equals("/api/steam/callback") && m.equals("GET")) return chain.filter(x);
     if (m.equals("OPTIONS")
         || (m.equals("GET")
             && (p.startsWith("/api/productos")
                 || p.startsWith("/api/categorias")
-                || p.startsWith("/api/calificaciones/vendedor/")
                 || p.equals("/api/usuarios/publicos")))
         || (m.equals("POST") && (p.equals("/api/auth/login") || p.equals("/api/auth/registro"))))
       return chain.filter(x);
@@ -75,7 +75,7 @@ public class AccesoFilter implements GlobalFilter, Ordered {
         .flatMap(
             u -> {
               if (Boolean.TRUE.equals(u.get("suspendido"))) return error(x, HttpStatus.FORBIDDEN);
-              return DataBufferUtils.join(request.getBody(), 65536)
+              return DataBufferUtils.join(request.getBody(), (p.startsWith("/api/tickets")||p.startsWith("/api/reportes"))?2200000:65536)
                   .map(
                       buf -> {
                         byte[] b = new byte[buf.readableByteCount()];
@@ -132,6 +132,7 @@ public class AccesoFilter implements GlobalFilter, Ordered {
                     e.getStatusCode().is4xxClientError()
                         ? HttpStatus.UNAUTHORIZED
                         : HttpStatus.SERVICE_UNAVAILABLE))
+        .onErrorResume(org.springframework.core.io.buffer.DataBufferLimitException.class,e->error(x,HttpStatus.PAYLOAD_TOO_LARGE))
         .onErrorResume(e -> error(x, HttpStatus.SERVICE_UNAVAILABLE));
   }
 
@@ -140,6 +141,15 @@ public class AccesoFilter implements GlobalFilter, Ordered {
       ServerWebExchange x, String p, String m, Map u, Map body, String token) {
     boolean admin = "admin".equals(u.get("rol")), leer = m.equals("GET");
     String id = String.valueOf(u.get("id"));
+    if(p.startsWith("/api/admin/soporte")||p.startsWith("/api/admin/tickets")||p.startsWith("/api/admin/reportes"))return Mono.just(admin);
+    if(p.equals("/api/soporte/notificaciones")||p.equals("/api/soporte/acceso"))return Mono.just(leer);
+    if(p.equals("/api/tickets")||p.equals("/api/reportes"))return Mono.just(!admin&&m.equals("POST"));
+    if(p.equals("/api/tickets/mis-tickets")||p.equals("/api/reportes/mis-reportes"))return Mono.just(!admin&&leer);
+    if(p.matches("/api/(tickets|reportes)/[0-9]+(/.*)?")||p.matches("/api/(tickets|reportes)/adjuntos/[0-9]+")){
+      String tipo=p.contains("/adjuntos/")?"ADJUNTO":p.startsWith("/api/tickets")?"TICKET":p.startsWith("/api/reportes")?"REPORTE":"ADJUNTO";
+      String objetivo=tipo.equals("ADJUNTO")?p.split("/")[4]:p.split("/")[3];
+      return cliente.get().uri((p.startsWith("/api/tickets")?tickets:reportes)+"/api/soporte/acceso?tipo="+tipo+"&id="+objetivo).header("Authorization","Bearer "+token).retrieve().bodyToMono(Map.class).map(v->Boolean.TRUE.equals(v.get("permitido"))).onErrorReturn(false);
+    }
     if(p.matches("/api/pagos/[0-9]+/(confirmar|rechazar|reembolsar)"))return Mono.just(false);
     if (p.startsWith("/api/operaciones")) {
       if(p.matches("/api/operaciones/pagos/[0-9]+/verificar"))return Mono.just(admin && m.equals("POST"));
@@ -159,8 +169,6 @@ public class AccesoFilter implements GlobalFilter, Ordered {
     if (p.equals("/api/auth/validar"))
       return Mono.just(token.equals(x.getRequest().getQueryParams().getFirst("token")));
     if (p.equals("/api/pagos/mis-ventas")) return Mono.just(leer && !admin);
-    if (p.equals("/api/calificaciones")) return Mono.just(m.equals("POST") && "cliente".equals(u.get("rol")));
-    if (p.startsWith("/api/inventario") || p.equals("/api/steam/vincular")) return Mono.just("cliente".equals(u.get("rol")));
     if (p.equals("/api/auth/logout")) return Mono.just(true);
     if (p.equals("/api/pagos/checkout")) return Mono.just(!admin);
     if (admin && (p.startsWith("/api/carritos") || p.endsWith("/retiros") || p.endsWith("/perfil") || (p.equals("/api/productos") && m.equals("POST")))) return Mono.just(false);

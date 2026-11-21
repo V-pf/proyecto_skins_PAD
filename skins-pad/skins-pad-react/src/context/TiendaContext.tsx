@@ -100,11 +100,7 @@ export function TiendaProvider({ children }: { children: ReactNode }) {
         await listaProductos.recargar();
         return;
       }
-      const esModeracion = usuario?.rol === "admin" &&
-        (parche.estado === "activa" || parche.estado === "rechazada");
-      const nuevo = esModeracion
-        ? await productoService.cambiarEstado(id, estados[parche.estado!], parche.motivoRechazo)
-        : await productoService.actualizar(id, body({ ...actual, ...parche }));
+      const nuevo = await productoService.actualizar(id, body({ ...actual, ...parche }));
       setProductos((prev) => prev.map((p) => (p.id === id ? nuevo : p)));
       await listaProductos.recargar();
     },
@@ -130,11 +126,9 @@ export function TiendaProvider({ children }: { children: ReactNode }) {
         metodo: metodos[metodo],
         solicitudId: solicitud.current.id,
       });
-      if (pago.estado !== "PENDIENTE") solicitud.current = {id:crypto.randomUUID(),firma:""};
+      solicitud.current = {id:crypto.randomUUID(),firma:""};
       await refrescar();
       await recargar();
-      if (pago.estado !== "APROBADO" && pago.estado !== "PENDIENTE")
-        throw new Error("El pago no se completó. Revisa la disponibilidad de la skin.");
       return pago;
     },
   };

@@ -1,0 +1,1 @@
+package cl.skinspad.usuario.moderacion;public interface AccionReporteRepository extends org.springframework.data.jpa.repository.JpaRepository<AccionReporte,String>{}

@@ -1,4 +1,4 @@
-import ReputacionVendedor from "../components/ReputacionVendedor";
+import BotonReporte from "../components/soporte/FormularioReporte";
 import { useOperacion } from "../lib/useOperacion";
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -39,9 +39,9 @@ export default function DetalleProducto() {
   const { ejecutar, ocupado } = useOperacion();
   const { id } = useParams();
   const navigate = useNavigate();
-  const { productos, usuarios, cargando } = useTienda();
+  const { productos, usuarios, pagar, cargando } = useTienda();
   const { usuario } = useAuth();
-  const { agregar, comprar: comprarSkins } = useCarrito();
+  const { agregar } = useCarrito();
   const { mostrar } = useToast();
 
   const [errorCompra, setErrorCompra] = useState("");
@@ -79,7 +79,7 @@ export default function DetalleProducto() {
     );
   }
 
-  if(producto.estado!=="activa")return <main className="container py-5"><h1>{producto.nombre}</h1><p>Publicación {ESTADO_PUBLICACION[producto.estado].texto.toLowerCase()}. Esta skin ya no está disponible para comprar.</p><Link to="/catalogo">Volver al catálogo</Link></main>;
+  if(producto.estado!=="activa")return <main className="container py-5"><h1>{producto.nombre}</h1><BotonReporte tipo="PUBLICACION" objetivoId={String(producto.id)} propietario={producto.vendedorId}/><p>Publicación {ESTADO_PUBLICACION[producto.estado].texto.toLowerCase()}. Esta skin ya no está disponible para comprar.</p><Link to="/catalogo">Volver al catálogo</Link></main>;
   const grado = infoGrado(producto.grado);
   const desgaste = DESGASTES[producto.desgaste];
   const vendedor = usuarios.find((u) => u.usuario === producto.vendedor);
@@ -125,9 +125,9 @@ export default function DetalleProducto() {
           return;
         }
       }
-      const mensaje = await comprarSkins([producto.id], form.valores.metodoPago);
+      const pago = await pagar([producto.id], form.valores.metodoPago);
       navigate("/cliente/pagos", {
-        state: { mensaje },
+        state: { mensaje: "Pago #" + pago.id + " registrado: " + pago.estado },
       });
     });
   }
@@ -156,7 +156,8 @@ export default function DetalleProducto() {
               className="img-fluid"
             />
             <figcaption className="mt-2 text-body-secondary small">
-              {producto.inventarioId && !producto.demo ? "Imagen del inventario de Steam." : "Imagen ilustrativa. El aspecto final depende del acabado real del ítem."}
+              Imagen ilustrativa. El aspecto final depende del acabado real del
+              ítem.
             </figcaption>
           </figure>
           {producto.imagenes?.slice(1).map(i=><img key={i.id} src={i.urlImagen} alt={producto.nombre} className="img-fluid mb-2" />)}
@@ -165,7 +166,6 @@ export default function DetalleProducto() {
               Sobre el vendedor
             </h2>
             <aside className="stat-tile">
-              {producto.vendedorId && <ReputacionVendedor id={producto.vendedorId} />}
               <address className="mb-2" style={{ fontStyle: "normal" }}>
                 <p className="mb-1">
                   <Link to={`/perfil/${producto.vendedorId}`}>{producto.vendedor}</Link>{" "}
@@ -193,8 +193,7 @@ export default function DetalleProducto() {
 
         <div className="col-lg-6">
           <p className="badge-grado mb-2">{grado.insignia}</p>
-          {producto.demo && <p className="alert alert-warning">Ítem de prueba del inventario de demostración.</p>}
-          <h1 className="mb-1">
+          <BotonReporte tipo="PUBLICACION" objetivoId={String(producto.id)} propietario={producto.vendedorId}/><h1 className="mb-1">
             {producto.nombre}{" "}
             {producto.stattrak && (
               <span className="badge text-bg-warning align-middle">

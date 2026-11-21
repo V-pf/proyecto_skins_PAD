@@ -26,7 +26,6 @@ public class CatalogoService {
     private final ProductoRepository productos;
     private final CategoriaRepository categorias;
     private final ImagenProductoRepository imagenes;
-    private final cl.skinspad.catalogo.inventario.InventarioService inventario;
 
     @Transactional(readOnly = true)
     // La búsqueda aplica solo los filtros que llegaron en la consulta.
@@ -87,11 +86,6 @@ public class CatalogoService {
         // Se bloquea la publicación al editar para respetar la reserva de una compra.
         Producto producto = productos.bloquear(id).orElseThrow(()->new EntityNotFoundException("Publicación inexistente"));
         if(producto.getReservaPago()!=null) throw new IllegalStateException("Esta skin está reservada o vendida");
-        if (producto.getInventarioId() != null) {
-            producto.setPrecio(request.precio());
-            if(request.estado()==EstadoProducto.ELIMINADO) producto.setEstado(EstadoProducto.ELIMINADO);
-            return productos.save(producto);
-        }
         Categoria categoria = buscarCategoria(request.categoriaId());
         aplicarDatosProducto(producto, request, categoria);
         return productos.save(producto);
@@ -142,41 +136,28 @@ public class CatalogoService {
             // La referencia permite identificar qué pago puede venderla o devolverla al catálogo.
             switch(r.accion()) {
                 case "COTIZAR" -> {
-                    if(p.getInventarioId()!=null) inventario.verificarDisponible(p);
                     if(p.getEstado()!=EstadoProducto.ACTIVO || p.getReservaPago()!=null)throw new IllegalStateException("Skin no disponible");
                 }
                 case "DESCARTAR" -> {
                     if(r.referencia().equals(p.getReservaPago()) && p.getEstado()==EstadoProducto.INACTIVO){
-                        liberarReserva(p);
+                        p.setReservaPago(null);p.setEstado(EstadoProducto.ACTIVO);
                     }
                 }
                 case "RESERVAR" -> {
                     if(r.referencia().equals(p.getReservaPago())) continue;
-                    if(p.getInventarioId()!=null) inventario.verificarDisponible(p);
                     if(p.getReservaPago()!=null || p.getEstado()!=EstadoProducto.ACTIVO) throw new IllegalStateException("Skin no disponible");
                     p.setReservaPago(r.referencia());p.setEstado(EstadoProducto.INACTIVO);
                 }
                 case "VENDER","LIBERAR" -> {
-                    if ("LIBERAR".equals(r.accion()) && p.getReservaPago() == null
-                        && p.getEstado() == estadoAlLiberar(p)) continue;
+                    if("LIBERAR".equals(r.accion()) && p.getReservaPago()==null && p.getEstado()==EstadoProducto.ACTIVO) continue;
                     if(!r.referencia().equals(p.getReservaPago())) throw new IllegalStateException("Reserva ajena");
                     if("VENDER".equals(r.accion())) p.setEstado(EstadoProducto.VENDIDO);
-                    else liberarReserva(p);
+                    else {p.setReservaPago(null);p.setEstado(EstadoProducto.ACTIVO);}
                 }
                 default -> throw new IllegalArgumentException("Acción inválida");
             }
         }
         return productos.saveAll(lista);
-    }
-
-    private void liberarReserva(Producto producto) {
-        producto.setReservaPago(null);
-        producto.setEstado(estadoAlLiberar(producto));
-    }
-
-    private EstadoProducto estadoAlLiberar(Producto producto) {
-        return Boolean.TRUE.equals(producto.getRetiradaParaInventario())
-            ? EstadoProducto.ELIMINADO : EstadoProducto.ACTIVO;
     }
 
     @Transactional
@@ -192,29 +173,18 @@ public class CatalogoService {
 
     @Transactional
     public Producto actualizarEstado(Long id, EstadoProducto estado) {
-        return actualizarEstado(id, estado, null);
-    }
-
-    @Transactional
-    public Producto actualizarEstado(Long id, EstadoProducto estado, String motivoRechazo) {
         if (estado == null) {
             throw new IllegalArgumentException("Estado obligatorio");
         }
         Producto producto = productos.bloquear(id).orElseThrow();
         if(producto.getReservaPago()!=null)throw new IllegalStateException("Usa la operación de custodia para intervenir esta reserva");
         producto.setEstado(estado);
-        if (estado == EstadoProducto.ACTIVO) {
-            producto.setMotivoRechazo(null);
-        } else if (motivoRechazo != null) {
-            producto.setMotivoRechazo(motivoRechazo.trim());
-        }
         return productos.save(producto);
     }
 
     @Transactional
     public ImagenProducto agregarImagen(Long productoId, ImagenRequest request) {
         Producto producto = buscarPorId(productoId);
-        if(producto.getInventarioId()!=null) throw new IllegalStateException("Las imágenes del inventario proceden de Steam.");
         // Además del tipo declarado, se revisan el tamaño y los primeros bytes del archivo.
         String url=request.urlImagen();
         if (!url.matches("data:image/(png|jpeg);base64,[A-Za-z0-9+/=]+"))
@@ -241,7 +211,6 @@ public class CatalogoService {
     @Transactional
     public void quitarImagen(Long productoId, Long imagenId) {
         var imagen=imagenes.findById(imagenId).orElseThrow();
-        if(imagen.getProducto().getInventarioId()!=null) throw new IllegalStateException("Las imágenes del inventario proceden de Steam.");
         if(!productoId.equals(imagen.getProducto().getId()))throw new IllegalArgumentException("Imagen ajena");
         imagenes.delete(imagen);
     }
@@ -251,7 +220,6 @@ public class CatalogoService {
         if (!imagenes.existsById(imagenId)) {
             throw new EntityNotFoundException("Imagen no encontrada: " + imagenId);
         }
-        if(imagenes.findById(imagenId).orElseThrow().getProducto().getInventarioId()!=null) throw new IllegalStateException("Las imágenes del inventario proceden de Steam.");
         imagenes.deleteById(imagenId);
     }
 

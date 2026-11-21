@@ -9,7 +9,7 @@ export default function EditarSkin({ producto: p }: { producto: Producto }) {
     { ejecutar, ocupado } = useOperacion();
   return abierto ? (
     <>
-      {!p.inventarioId && <Imagenes producto={p} />}
+      <Imagenes producto={p} />
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -17,16 +17,15 @@ export default function EditarSkin({ producto: p }: { producto: Producto }) {
           const d = new FormData(e.currentTarget);
           void ejecutar(async () => {
             await actualizarProducto(p.id, {
-              nombre: p.inventarioId ? p.nombre : String(d.get("nombre")),
-              descripcion: p.inventarioId ? p.descripcion : String(d.get("descripcion")),
-              categoriaId: p.inventarioId ? p.categoriaId : Number(d.get("categoria")),
+              nombre: String(d.get("nombre")),
+              descripcion: String(d.get("descripcion")),
+              categoriaId: Number(d.get("categoria")),
               precio: Number(d.get("precio")),
             });
             setAbierto(false);
           });
         }}
       >
-        {!p.inventarioId && <>
         <label>
           Nombre
           <input
@@ -62,7 +61,6 @@ export default function EditarSkin({ producto: p }: { producto: Producto }) {
               ))}
           </select>
         </label>
-        </>}
         <label>
           Precio CLP
           <input
