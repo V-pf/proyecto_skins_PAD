@@ -38,9 +38,9 @@ export default function DetalleProducto() {
   const { ejecutar, ocupado } = useOperacion();
   const { id } = useParams();
   const navigate = useNavigate();
-  const { productos, usuarios, pagar, cargando } = useTienda();
+  const { productos, usuarios, cargando } = useTienda();
   const { usuario } = useAuth();
-  const { agregar } = useCarrito();
+  const { agregar, comprar: comprarSkins } = useCarrito();
   const { mostrar } = useToast();
 
   const [errorCompra, setErrorCompra] = useState("");
@@ -124,9 +124,9 @@ export default function DetalleProducto() {
           return;
         }
       }
-      const pago = await pagar([producto.id], form.valores.metodoPago);
+      const mensaje = await comprarSkins([producto.id], form.valores.metodoPago);
       navigate("/cliente/pagos", {
-        state: { mensaje: "Pago #" + pago.id + " registrado: " + pago.estado },
+        state: { mensaje },
       });
     });
   }
