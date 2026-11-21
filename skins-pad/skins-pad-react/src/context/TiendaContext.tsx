@@ -126,9 +126,11 @@ export function TiendaProvider({ children }: { children: ReactNode }) {
         metodo: metodos[metodo],
         solicitudId: solicitud.current.id,
       });
-      solicitud.current = {id:crypto.randomUUID(),firma:""};
+      if (pago.estado !== "PENDIENTE") solicitud.current = {id:crypto.randomUUID(),firma:""};
       await refrescar();
       await recargar();
+      if (pago.estado !== "APROBADO" && pago.estado !== "PENDIENTE")
+        throw new Error("El pago no se completó. Revisa la disponibilidad de la skin.");
       return pago;
     },
   };

@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
+import { ErrorAPI } from "../lib/api";
 import { carritoService } from "../services/carrito.service";
 import { useCarritoRemoto } from "../hooks/useCarritoRemoto";
 import { useAuth } from "./AuthContext";
@@ -10,6 +11,7 @@ import type { ItemCarrito, Producto } from "../types";
 
 
 interface Carrito {
+  comprar: (ids: number[], metodo: string) => Promise<string>;
   cargando: boolean;
   items: ItemCarrito[];
   /** Los ítems del carrito unidos con los datos del producto (si todavía existe). */
@@ -26,7 +28,7 @@ interface Carrito {
 const Ctx = createContext<Carrito | null>(null);
 
 export function CarritoProvider({ children }: { children: ReactNode }) {
-  const { productos } = useTienda();
+  const { productos, pagar } = useTienda();
   const { usuario } = useAuth();
   const carga = useCarritoRemoto(usuario?.rol === "cliente" ? usuario.id : undefined);
   const cart = carga.datos;
@@ -50,6 +52,25 @@ export function CarritoProvider({ children }: { children: ReactNode }) {
   );
 
   const valor: Carrito = {
+    async comprar(ids, metodo) {
+      if (!usuario) throw new Error("Inicia sesión para comprar.");
+      const pago = await pagar(ids, metodo);
+      let mensaje = "Pago #" + pago.id + " registrado: " + pago.estado;
+      try {
+        const actual = await carritoService.obtenerPorUsuario(usuario.id);
+        for (const item of actual.items.filter(item => ids.includes(item.productoId))) {
+          try {
+            await carritoService.quitar(actual.id, item.productoId);
+          } catch (e) {
+            if (!(e instanceof ErrorAPI && e.status === 404)) throw e;
+          }
+        }
+      } catch {
+        mensaje += ". Revisa el carrito: no se pudieron quitar todas las skins compradas.";
+      }
+      await carga.recargar();
+      return mensaje;
+    },
     cargando: carga.cargaInicial,
     items,
     lineas,

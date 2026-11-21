@@ -65,6 +65,20 @@ public class CheckoutService {
       pago.setEstado(EstadoPago.PENDIENTE);
       // Se guarda el pago pendiente antes de intentar cobrar.
       pago = pagos.saveAndFlush(pago);
+    } catch (org.springframework.dao.DataIntegrityViolationException e) {
+      // Otra instancia pudo guardar la misma solicitud mientras esta esperaba el índice único.
+      var repetido = pagos.findByPedidoId(ref);
+      if (repetido.isPresent()) {
+        var existente = repetido.get();
+        if (!usuarioId.equals(existente.getUsuarioId()))
+          throw new IllegalStateException("Referencia ajena", e);
+        if (!existente.getProductoIds().equals(r.productoIds())
+            || existente.getMetodo() != r.metodo())
+          throw new IllegalStateException("La solicitud ya se usó con otros datos", e);
+        return existente;
+      }
+      if (conSaldo) catalogo.reservar(new Reserva(ref, r.productoIds(), "LIBERAR"));
+      throw e;
     } catch (RuntimeException e) {
       if (conSaldo) catalogo.reservar(new Reserva(ref, r.productoIds(), "LIBERAR"));
       throw e;
