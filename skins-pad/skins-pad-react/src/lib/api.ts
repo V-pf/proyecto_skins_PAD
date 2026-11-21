@@ -51,6 +51,7 @@ export interface Pago {
   fecha: string;
   montoTotal: number;
   numeroOperacion?: string;
+  etapaCustodia?: string;
   liquidado?:boolean;
   cuotas?: number;
   referenciaExterna?: string;

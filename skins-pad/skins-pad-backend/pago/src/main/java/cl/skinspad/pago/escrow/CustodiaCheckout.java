@@ -29,11 +29,17 @@ public class CustodiaCheckout {
      skins.forEach(sk->nuevo.getPrecios().put(sk.id(),sk.precio()));pagos.saveAndFlush(nuevo);
      long acumulado=0,asignado=0;
      for(var skin:skins.stream().sorted(Comparator.comparing(CatalogoPagoClient.Skin::id)).toList()){
-       var o=new Operacion();o.setPagoId(nuevo.getId());o.setProductoId(skin.id());o.setCompradorId(comprador);o.setVendedorId(skin.vendedorId());o.setNombre(skin.nombre()==null?"Skin #"+skin.id():skin.nombre());o.setPrecio(skin.precio().longValueExact());
+       var o=new Operacion();o.setPagoId(nuevo.getId());o.setProductoId(skin.id());o.setProductoOcupado(skin.id());o.setCompradorId(comprador);o.setVendedorId(skin.vendedorId());o.setNombre(skin.nombre()==null?"Skin #"+skin.id():skin.nombre());o.setPrecio(skin.precio().longValueExact());
        acumulado+=o.getPrecio();long cuota=BigInteger.valueOf(acumulado).multiply(BigInteger.valueOf(comision)).divide(BigInteger.valueOf(base)).longValueExact();o.setComision(cuota-asignado);asignado=cuota;
        o.setVence(Instant.now().plus(Duration.ofHours(pagoHoras)));operaciones.saveAndFlush(o);eventos.save(new EventoOperacion(o,comprador,"CREAR","Compra con custodia; entrega simulada"));
      }return nuevo;
-   });}catch(org.springframework.dao.DataIntegrityViolationException e){return existente(pagos.findByPedidoId(ref).orElseThrow(()->e),comprador,r);}
+   });} catch (org.springframework.dao.DataIntegrityViolationException e) {
+     var repetido = pagos.findByPedidoId(ref);
+     if (repetido.isPresent()) return existente(repetido.get(), comprador, r);
+     if (operaciones.existsByProductoOcupadoIn(r.productoIds()))
+       throw new IllegalStateException("Una de las skins ya no está disponible", e);
+     throw e;
+   }
    custodia.pago(p.getId());return pagos.findById(p.getId()).orElseThrow();
  }
  private Pago existente(Pago p,String comprador,CheckoutRequest r){

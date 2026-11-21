@@ -121,9 +121,13 @@ export function TiendaProvider({ children }: { children: ReactNode }) {
         metodo,
         solicitudId: solicitud.current.id,
       });
-      solicitud.current = {id:crypto.randomUUID(),firma:""};
+      const conciliando = pago.etapaCustodia && pago.etapaCustodia !== "LISTO";
+      if (!conciliando) solicitud.current = {id:crypto.randomUUID(),firma:""};
       await refrescar();
       await recargar();
+      if (conciliando) throw new Error("La compra está en verificación. Consulta Mis pagos antes de reintentar.");
+      if (pago.estado !== "APROBADO" && pago.estado !== "PENDIENTE")
+        throw new Error("El pago no se completó. Revisa la disponibilidad de la skin.");
       return pago;
     },
   };

@@ -44,7 +44,7 @@ public class CustodiaTransactions {
    var os=operaciones.findByPagoIdOrderById(id);
    if(etapa.equals("CANCELAR")){
      catalogo.reservar(new CatalogoPagoClient.Reserva(p.getPedidoId(),p.getProductoIds(),"DESCARTAR"));
-     for(var o:os){o.setEstado(MaquinaOperacion.siguiente(o.getEstado(),CANCELAR));o.setCausa("RESERVA_O_SALDO_RECHAZADO");o.setVence(null);eventos.save(new EventoOperacion(o,"SISTEMA","CANCELAR",p.getErrorCustodia()));}
+     for(var o:os){o.setEstado(MaquinaOperacion.siguiente(o.getEstado(),CANCELAR));o.setProductoOcupado(null);o.setCausa("RESERVA_O_SALDO_RECHAZADO");o.setVence(null);eventos.save(new EventoOperacion(o,"SISTEMA","CANCELAR",p.getErrorCustodia()));}
      p.setEstado(EstadoPago.RECHAZADO);p.setEtapaCustodia("LISTO");p.setErrorCustodia(null);return;
    }
    // Precio y vendedor se congelaron al crear la orden; se contrastan al reservar.
@@ -95,6 +95,7 @@ public class CustodiaTransactions {
      if(o.isRetenido()){usuarios.abonar(o.getCompradorId(),BigDecimal.valueOf(Math.addExact(o.getPrecio(),o.getComision())),"ESCROW-REEMBOLSO-"+o.getId());asientos.save(new AsientoCustodia(o,"REEMBOLSO",Math.addExact(o.getPrecio(),o.getComision()),actor));o.setRetenido(false);}
      // DESCARTAR no toca una reserva que ya pertenezca a otra operación.
      catalogo.reservar(new CatalogoPagoClient.Reserva(p.getPedidoId(),List.of(o.getProductoId()),"DESCARTAR"));
+     o.setProductoOcupado(null);
      if(a==RECHAZAR)o.setCausa("RECHAZADA_POR_VENDEDOR");else if(a==EXPIRAR)o.setCausa("EXPIRADA");else o.setCausa(a.name());
    }
    o.setEstado(siguiente);o.setActualizada(Instant.now());

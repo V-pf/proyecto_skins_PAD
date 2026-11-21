@@ -28,6 +28,46 @@ class CustodiaIntegrationTest {
    verifyNoInteractions(catalog,users);
    assertEquals(0,pagos.count());
  }
+ @Test void dosCotizacionesSimultaneasSoloCreanUnPago() throws Exception {
+   var cotizados = new CyclicBarrier(2);
+   var propietario = new java.util.concurrent.atomic.AtomicReference<String>();
+   doAnswer(call -> {
+     CatalogoPagoClient.Reserva r = call.getArgument(0);
+     if (r.accion().equals("COTIZAR")) cotizados.await(10,TimeUnit.SECONDS);
+     if (r.accion().equals("RESERVAR") && !propietario.compareAndSet(null,r.referencia()))
+       throw new IllegalArgumentException("Skin no disponible");
+     return List.of(new CatalogoPagoClient.Skin(1L,"seller",BigDecimal.valueOf(1000),"Skin"));
+   }).when(catalog).reservar(any());
+   var pool = Executors.newFixedThreadPool(2);
+   try {
+     Callable<Boolean> comprar = () -> {
+       try {
+         var p = checkout.iniciar("buyer",new CheckoutRequest(UUID.randomUUID().toString(),List.of(1L),MetodoPago.SALDO));
+         return p.getEstado()==EstadoPago.APROBADO;
+       } catch (IllegalStateException conflicto) { return false; }
+     };
+     var directa = pool.submit(comprar);
+     var carrito = pool.submit(comprar);
+     assertNotEquals(directa.get(20,TimeUnit.SECONDS),carrito.get(20,TimeUnit.SECONDS));
+     assertEquals(1,pagos.count());
+     assertEquals(1,ops.count());
+     assertEquals(1,debitos.size());
+     verify(catalog,times(1)).reservar(argThat(r -> r.accion().equals("RESERVAR")));
+   } finally { pool.shutdownNow(); }
+ }
+
+ @Test void unaReservaFallidaPermiteUnaNuevaCompra() {
+   var rechazar = new java.util.concurrent.atomic.AtomicBoolean(true);
+   doAnswer(call -> {
+     CatalogoPagoClient.Reserva r = call.getArgument(0);
+     if (r.accion().equals("RESERVAR") && rechazar.getAndSet(false))
+       throw new IllegalArgumentException("La cotización cambió");
+     return List.of(new CatalogoPagoClient.Skin(1L,"seller",BigDecimal.valueOf(1000),"Skin"));
+   }).when(catalog).reservar(any());
+   assertEquals(EstadoPago.RECHAZADO,checkout.iniciar("buyer",new CheckoutRequest("fallida",List.of(1L),MetodoPago.SALDO)).getEstado());
+   assertEquals(PAGO_RETENIDO,nueva().getEstado());
+   assertEquals(1,debitos.size());
+ }
  Operacion nueva(){var p=checkout.iniciar("buyer",new CheckoutRequest(UUID.randomUUID().toString(),List.of(1L),MetodoPago.SALDO));return ops.findByPagoIdOrderById(p.getId()).get(0);}
  void action(Operacion o,MaquinaOperacion.Accion a,String actor){service.accion(o.getId(),a,actor,actor.equals("admin")?"admin":"cliente","Motivo de prueba",false);}
  void entregar(Operacion o){action(o,ACEPTAR,"seller");action(o,ENTREGAR,"seller");}

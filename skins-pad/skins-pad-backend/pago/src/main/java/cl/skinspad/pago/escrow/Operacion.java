@@ -2,13 +2,19 @@ package cl.skinspad.pago.escrow;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
-@Entity @Table(name="operaciones",uniqueConstraints=@UniqueConstraint(columnNames={"pagoId","productoId"}))
+@Entity @Table(name="operaciones",uniqueConstraints={
+ @UniqueConstraint(columnNames={"pagoId","productoId"}),
+ @UniqueConstraint(name="uk_operacion_producto_ocupado",columnNames="producto_ocupado")
+})
 @Getter @Setter @NoArgsConstructor
 public class Operacion {
  @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
  @Version private long version;
  @Column(nullable=false) private Long pagoId;
  @Column(nullable=false) private Long productoId;
+ // Se adquiere al crear el pago y se libera al cancelar o reembolsar la línea.
+ @com.fasterxml.jackson.annotation.JsonIgnore
+ @Column(name="producto_ocupado") private Long productoOcupado;
  @Column(nullable=false,length=80) private String compradorId;
  @Column(nullable=false,length=80) private String vendedorId;
  @Column(nullable=false) private String nombre;

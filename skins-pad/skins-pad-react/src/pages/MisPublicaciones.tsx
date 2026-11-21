@@ -14,7 +14,7 @@ export default function MisPublicaciones() {
   if (cargando.productos) return <p className="container py-4">Cargando catálogo…</p>;
 
   // Reúne las publicaciones del usuario para mostrar su estado y las acciones disponibles.
-  const mias = productos.filter((p) => p.vendedor === usuario.usuario);
+  const mias = productos.filter((p) => p.vendedorId ? p.vendedorId === usuario.id : p.vendedor === usuario.usuario);
 
   return (
     <div className="container py-4">

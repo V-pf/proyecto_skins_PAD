@@ -14,8 +14,8 @@ import { formatoCLP, hoyISO } from "../lib/formato";
 export default function Carrito() {
   const { ejecutar, ocupado } = useOperacion();
   const { usuario } = useAuth();
-  const { pagar, cargando: cargaTienda } = useTienda();
-  const { lineas, totales, cantidadTotal, quitar, vaciar, cargando } =
+  const { cargando: cargaTienda } = useTienda();
+  const { lineas, totales, cantidadTotal, quitar, vaciar, comprar, cargando } =
     useCarrito();
   const navigate = useNavigate();
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -44,21 +44,14 @@ export default function Carrito() {
           return;
         }
       }
-      // Primero se registra el pago. Si luego falla el vaciado, se avisa que el pago ya quedó registrado.
-      const pago = await pagar(
-        lineas.map((l) => l.producto.id),
-        metodo,
-      );
-      try {
-        await vaciar();
-      } catch {
-        window.alert(
-          "El pago se registró. Revisa el carrito antes de volver a comprar.",
-        );
+      if (lineas.some(l => l.producto.estado !== "activa")) {
+        setError("Quita las skins que ya no están disponibles para continuar.");
+        return;
       }
+      const mensaje = await comprar(lineas.map(l => l.producto.id), metodo);
       setModalAbierto(false);
       navigate("/cliente/compras", {
-        state: { mensaje: "Pago #" + pago.id + " registrado: " + pago.estado },
+        state: { mensaje },
       });
     });
   }
@@ -209,6 +202,7 @@ export default function Carrito() {
             <button
               type="button"
               className="btn btn-success"
+              disabled={ocupado || !lineas.length || lineas.some(l => l.producto.estado !== "activa")}
               onClick={confirmarPago}
             >
               Pagar y finalizar

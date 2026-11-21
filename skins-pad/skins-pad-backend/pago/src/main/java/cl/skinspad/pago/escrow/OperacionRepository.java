@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 public interface OperacionRepository extends JpaRepository<Operacion,Long> {
  @Query("select o.pagoId from Operacion o where o.id=:id") Long pagoId(@Param("id") Long id);
  @Lock(LockModeType.PESSIMISTIC_WRITE) @Query("select o from Operacion o where o.id=:id") Optional<Operacion> bloquear(@Param("id") Long id);
+ boolean existsByProductoOcupadoIn(Collection<Long> ids);
  List<Operacion> findByPagoIdOrderById(Long pagoId);
  List<Operacion> findByCompradorIdOrderByIdDesc(String id);
  List<Operacion> findByVendedorIdOrderByIdDesc(String id);

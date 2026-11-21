@@ -58,7 +58,7 @@ export function subtituloProducto(p: Producto): string {
 
 export const ESTADO_PUBLICACION: Record<EstadoPublicacion, { texto: string; clase: string }> = {
   activa: { texto: "Publicada", clase: "text-bg-success" },
-  pendiente: { texto: "Pendiente", clase: "text-bg-warning" },
+  pendiente: { texto: "En revisión", clase: "text-bg-warning" },
   inactiva: {texto:"Reservada",clase:"text-bg-secondary"},
   vendida: {texto:"Vendida",clase:"text-bg-secondary"},
   eliminada: {texto:"Retirada",clase:"text-bg-secondary"},
