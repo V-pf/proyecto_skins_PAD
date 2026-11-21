@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
@@ -16,7 +17,8 @@ import lombok.NoArgsConstructor;
 
 // Registro de un cobro con su comprador, método, monto, estado y skins incluidas.
 @Entity
-@Table(name = "pagos", uniqueConstraints = @jakarta.persistence.UniqueConstraint(columnNames="pedidoId"))
+@Table(name = "pagos", uniqueConstraints =
+    @UniqueConstraint(name = "uk_pagos_pedido_id", columnNames = "pedidoId"))
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
