@@ -15,7 +15,7 @@ spring:
       mail.smtp.connectiontimeout: 5000
       mail.smtp.timeout: 5000
   datasource:
-    url: ${USUARIO_DB_URL:jdbc:mysql://localhost:3306/skinspad_usuario?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Santiago&characterEncoding=UTF-8}
+    url: ${USUARIO_DB_URL:jdbc:mysql://localhost:3306/skinspad_usuario?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Santiago&characterEncoding=UTF-8}
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${USUARIO_DB_USERNAME:root}
     password: ${USUARIO_DB_PASSWORD:}

@@ -3,8 +3,8 @@ import type { ProductoAPI } from "../lib/api";
 import type { Tipo, Desgaste, Grado } from "../types";
 export interface ItemInventario {
   id: number; assetId: string; nombre: string; tipo: Tipo | null; grado: Grado;
-  desgaste: Desgaste; stattrak: boolean; imagen: string | null; intercambiable: boolean;
-  presente: boolean; demo: boolean; productoId: number | null;
+  desgaste: Desgaste | null; stattrak: boolean; imagen: string | null; intercambiable: boolean;
+  presente: boolean; demo: boolean; productoId: number | null; productoOrigenId: number | null;
 }
 export interface ItemVista { item: ItemInventario; estadoPublicacion: string | null; publicable: boolean }
 export interface Inventario { steamId: string | null; demo: boolean; sincronizado: string | null; items: ItemVista[] }

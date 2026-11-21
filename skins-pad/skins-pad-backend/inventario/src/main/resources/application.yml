@@ -1,0 +1,21 @@
+server:
+  address: ${INVENTARIO_BIND_ADDRESS:${SERVICE_BIND_ADDRESS:127.0.0.1}}
+  port: ${INVENTARIO_PORT:8082}
+spring:
+  application:
+    name: skins-pad-inventario
+  datasource:
+    url: ${INVENTARIO_DB_URL:jdbc:mysql://localhost:3306/skinspad_inventario?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Santiago&characterEncoding=UTF-8}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${INVENTARIO_DB_USERNAME:root}
+    password: ${INVENTARIO_DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: false
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs

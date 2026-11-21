@@ -1,0 +1,21 @@
+server:
+  address: ${STEAM_BIND_ADDRESS:${SERVICE_BIND_ADDRESS:127.0.0.1}}
+  port: ${STEAM_PORT:8086}
+spring:
+  application:
+    name: skins-pad-steam
+  datasource:
+    url: ${STEAM_DB_URL:jdbc:mysql://localhost:3306/skinspad_steam?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Santiago&characterEncoding=UTF-8}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${STEAM_DB_USERNAME:root}
+    password: ${STEAM_DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: false
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs

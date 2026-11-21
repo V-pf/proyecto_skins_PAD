@@ -1,5 +1,6 @@
 package cl.skinspad.catalogo.inventario;
 
+import cl.skinspad.catalogo.config.ClienteHttp;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
@@ -14,7 +15,7 @@ public class InventarioAuth {
   private final RestClient cliente;
 
   public InventarioAuth(@Value("${USUARIO_URL:http://localhost:8087}") String url) {
-    cliente = SteamClient.cliente(url);
+    cliente = ClienteHttp.cliente(url);
   }
 
   public Cuenta validar(String auth) {

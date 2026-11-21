@@ -36,16 +36,16 @@ export default function Vender() {
         {aviso && <p role="status" className="alert alert-success">{aviso} <Link to="/cliente/publicaciones">Ver mis publicaciones</Link></p>}
         {cargando && <p role="status">Cargando inventario…</p>}
         {datos && <>
-          {datos.demo && <p className="alert alert-warning">Inventario de prueba. Los ítems y el historial simulado permiten practicar el flujo de publicación.</p>}
+          {datos.demo && <p className="alert alert-warning">Los ítems de prueba tienen historial de precios simulado.</p>}
           {datos.steamId ? <p>Perfil vinculado · <a href={"https://steamcommunity.com/profiles/" + datos.steamId} target="_blank" rel="noreferrer">Ver en Steam</a></p> : <>
             <p>Vincula tu cuenta de Steam para importar automáticamente tu inventario de CS2. Tu inventario debe ser público.</p>
             <button className="btn btn-primary mb-3" disabled={ocupado || cargando} onClick={() => void vincular()}>Vincular con Steam</button>
           </>}
           {(datos.steamId || datos.demo) && <>
-            <div className="d-flex align-items-center gap-3 mb-3">
+            {datos.steamId && <div className="d-flex align-items-center gap-3 mb-3">
               <button className="btn btn-outline-light" disabled={ocupado || cargando} onClick={() => void sincronizar()}>Sincronizar inventario</button>
               {datos.sincronizado && <small>Actualizado {new Date(datos.sincronizado).toLocaleString("es-CL")}</small>}
-            </div>
+            </div>}
             {!usuario?.verificado && <p className="alert alert-info">Tu cuenta debe ser verificada por administración para publicar.</p>}
             {!cargando && !datos.items.length && <p>Tu inventario de CS2 está vacío.</p>}
             <div className="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3">
@@ -53,8 +53,19 @@ export default function Vender() {
                 <article className={"card h-100 p-3 " + (seleccion === item.id ? "border-primary" : "")}>
                   {(item.imagen || item.tipo) && <img src={item.imagen || imagenDe(item.tipo!)} alt={item.nombre} height={140} style={{ objectFit: "contain" }} />}
                   <h2 className="h6 mt-2">{item.nombre}</h2>
-                  <p className="small">{DESGASTES[item.desgaste].nombre}</p>
-                  <p className="small text-body-secondary">{!item.presente ? "Ya no está en tu inventario" : !item.intercambiable ? "Intercambio bloqueado en Steam" : !item.tipo ? "Tipo de ítem no admitido para venta" : estadoPublicacion && !publicable ? "Publicación " + estadoPublicacion.toLowerCase().replace(/_/g, " ") : "Disponible para publicar"}</p>
+                  <p className="small">
+                    {item.demo && <span className="badge text-bg-secondary me-2">Prueba</span>}
+                    {item.desgaste && DESGASTES[item.desgaste]?.nombre}
+                  </p>
+                  <p className="small text-body-secondary">
+                    {estadoPublicacion === "VENDIDO" ? "Vendido"
+                      : estadoPublicacion === "RESERVADO" ? "Reservado"
+                      : !item.presente ? "Ya no está en tu inventario"
+                      : !item.intercambiable ? "Intercambio bloqueado en Steam"
+                      : !item.tipo && !item.productoOrigenId ? "Tipo de ítem no admitido para venta"
+                      : estadoPublicacion && !publicable ? "Publicación " + estadoPublicacion.toLowerCase().replace(/_/g, " ")
+                      : "Disponible para publicar"}
+                  </p>
                   <button className="btn btn-outline-light mt-auto" disabled={ocupado || cargando} onClick={() => { setSeleccion(item.id); setPrecio(""); setAviso(""); }}>Seleccionar</button>
                 </article>
               </div>)}

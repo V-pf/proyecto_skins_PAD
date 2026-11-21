@@ -147,7 +147,7 @@ public class CatalogoService {
                 }
                 case "DESCARTAR" -> {
                     if(r.referencia().equals(p.getReservaPago()) && p.getEstado()==EstadoProducto.INACTIVO){
-                        p.setReservaPago(null);p.setEstado(EstadoProducto.ACTIVO);
+                        liberarReserva(p);
                     }
                 }
                 case "RESERVAR" -> {
@@ -157,15 +157,26 @@ public class CatalogoService {
                     p.setReservaPago(r.referencia());p.setEstado(EstadoProducto.INACTIVO);
                 }
                 case "VENDER","LIBERAR" -> {
-                    if("LIBERAR".equals(r.accion()) && p.getReservaPago()==null && p.getEstado()==EstadoProducto.ACTIVO) continue;
+                    if ("LIBERAR".equals(r.accion()) && p.getReservaPago() == null
+                        && p.getEstado() == estadoAlLiberar(p)) continue;
                     if(!r.referencia().equals(p.getReservaPago())) throw new IllegalStateException("Reserva ajena");
                     if("VENDER".equals(r.accion())) p.setEstado(EstadoProducto.VENDIDO);
-                    else {p.setReservaPago(null);p.setEstado(EstadoProducto.ACTIVO);}
+                    else liberarReserva(p);
                 }
                 default -> throw new IllegalArgumentException("Acción inválida");
             }
         }
         return productos.saveAll(lista);
+    }
+
+    private void liberarReserva(Producto producto) {
+        producto.setReservaPago(null);
+        producto.setEstado(estadoAlLiberar(producto));
+    }
+
+    private EstadoProducto estadoAlLiberar(Producto producto) {
+        return Boolean.TRUE.equals(producto.getRetiradaParaInventario())
+            ? EstadoProducto.ELIMINADO : EstadoProducto.ACTIVO;
     }
 
     @Transactional
