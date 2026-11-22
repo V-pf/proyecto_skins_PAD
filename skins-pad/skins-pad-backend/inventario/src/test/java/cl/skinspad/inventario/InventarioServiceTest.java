@@ -47,6 +47,21 @@ class InventarioServiceTest {
   }
 
   @Test
+  void unaVentaOcultaElItemDelInventarioYConservaSuRegistro() {
+    var vendida = service.guardarTraslado("otro-dueno", 43L, null, "AK-47", "rifle",
+        "clasificado", "ft", false, null, null);
+    var reservada = service.guardarTraslado("otro-dueno", 44L, null, "AWP", "francotirador",
+        "clasificado", "ft", false, null, null);
+    when(servicios.estados("otro-dueno")).thenReturn(List.of(
+        new ServiciosInternos.Publicacion(vendida.getId(), 43L, "VENDIDO", false),
+        new ServiciosInternos.Publicacion(reservada.getId(), 44L, "RESERVADO", false)));
+
+    var vista = service.consultar("otro-dueno");
+    assertEquals(List.of(reservada.getId()), vista.items().stream().map(i -> i.item().getId()).toList());
+    assertTrue(items.existsById(vendida.getId()));
+  }
+
+  @Test
   void falloDeSteamConservaInventarioYUnaSincronizacionCompletaRetiraAusentes() {
     when(servicios.steamId("real")).thenReturn("76561198000000001");
     var item = new ItemInventario();

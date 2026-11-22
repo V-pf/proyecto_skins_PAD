@@ -1,6 +1,6 @@
 server:
   address: ${SERVICE_BIND_ADDRESS:127.0.0.1}
-  port: 8085
+  port: ${CALIFICACION_PORT:8089}
 spring:
   application:
     name: skins-pad-calificacion

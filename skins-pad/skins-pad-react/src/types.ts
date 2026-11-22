@@ -1,5 +1,5 @@
 // Datos que describen el tipo, la rareza y el desgaste de una skin.
-export type Tipo = "rifle" | "francotirador" | "pistola" | "subfusil" | "cuchillo" | "guantes" | "sticker";
+export type Tipo = "rifle" | "francotirador" | "pistola" | "subfusil" | "escopeta" | "ametralladora" | "cuchillo" | "guantes" | "sticker";
 
 export type Grado =
   | "consumidor"
@@ -28,6 +28,9 @@ export interface Producto {
   vendedor: string;
   estado: EstadoPublicacion;
   vendedorId?: string;
+  inventarioId?: number | null;
+  demo?: boolean | null;
+  revisionApta?: boolean | null;
   categoriaId?: number;
   urlIntercambio?: string;
   imagenes?: {id:number;urlImagen:string;esPrincipal:boolean}[];

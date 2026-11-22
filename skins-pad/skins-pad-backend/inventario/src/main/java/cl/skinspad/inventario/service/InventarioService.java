@@ -36,7 +36,10 @@ public class InventarioService {
     var estados = new HashMap<Long, ServiciosInternos.Publicacion>();
     if (!visibles.isEmpty()) servicios.estados(usuarioId).forEach(p -> estados.put(p.itemId(), p));
     var listado = visibles.stream()
-        .filter(i -> i.getProductoOrigenId() == null || estados.containsKey(i.getId()))
+        .filter(i -> {
+          var publicacion = estados.get(i.getId());
+          return publicacion == null ? i.getProductoOrigenId() == null : !"VENDIDO".equals(publicacion.estado());
+        })
         .map(i -> {
           var p = estados.get(i.getId());
           i.setProductoId(p == null ? null : p.productoId());

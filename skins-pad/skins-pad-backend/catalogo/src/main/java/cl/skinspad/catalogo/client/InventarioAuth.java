@@ -1,4 +1,4 @@
-package cl.skinspad.catalogo.inventario;
+package cl.skinspad.catalogo.client;
 
 import cl.skinspad.catalogo.config.ClienteHttp;
 import org.springframework.beans.factory.annotation.Value;

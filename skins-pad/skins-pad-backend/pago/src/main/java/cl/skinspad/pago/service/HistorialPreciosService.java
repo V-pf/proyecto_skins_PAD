@@ -1,4 +1,4 @@
-package cl.skinspad.pago.mercado;
+package cl.skinspad.pago.service;
 
 import cl.skinspad.pago.escrow.*;
 import java.time.*;
@@ -11,7 +11,7 @@ import org.springframework.web.client.RestClient;
 
 @Service
 @RequiredArgsConstructor
-public class PrecioMercadoService {
+public class HistorialPreciosService {
   private final OperacionRepository operaciones;
 
   @Value("${CATALOGO_URL:http://localhost:8081}")

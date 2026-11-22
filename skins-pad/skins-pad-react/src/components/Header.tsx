@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCarrito } from "../context/CarritoContext";
+import { ENLACES_CUENTA_CLIENTE } from "./MenuCuenta";
 
 export default function Header() {
   const { usuario, salir } = useAuth();
@@ -61,7 +62,7 @@ export default function Header() {
                 </NavLink>
               </li>
               <li className="nav-item">
-                <NavLink className={claseLink} to="/cliente/vender">
+                <NavLink className={claseLink} to="/cliente/inventario">
                   Vender
                 </NavLink>
               </li>
@@ -85,26 +86,22 @@ export default function Header() {
                 <button
                   type="button"
                   className="nav-link dropdown-toggle btn btn-link"
+                  aria-controls="menu-cuenta"
                   aria-expanded={cuentaAbierta}
                   onClick={() => setCuentaAbierta((v) => !v)}
                 >
                   {usuario ? usuario.usuario : "Mi cuenta"}
                 </button>
-                <ul className={`dropdown-menu dropdown-menu-end${cuentaAbierta ? " show" : ""}`}>
+                <ul id="menu-cuenta" className={`dropdown-menu dropdown-menu-end${cuentaAbierta ? " show" : ""}`}>
                   {usuario ? (
                     <>
-                      {usuario.rol !== "admin" && <><li>
-                        <Link className="dropdown-item" to="/cliente/panel">
-                          Mi panel
-                        </Link>
-                      </li>
-                      <li>
-                        <Link className="dropdown-item" to="/cliente/soporte">Soporte y mis reportes</Link><Link className="dropdown-item" to="/cliente/compras">Mis compras</Link><Link className="dropdown-item" to="/cliente/ventas">Mis ventas</Link>
-                        <Link className="dropdown-item" to="/cliente/pagos">
-                          Mis pagos
-                        </Link>
-                      </li>
-                      </>}
+                      {usuario.rol !== "admin" && ENLACES_CUENTA_CLIENTE.map(({ a, texto }) => (
+                        <li key={a}>
+                          <Link className="dropdown-item" to={a} onClick={() => setCuentaAbierta(false)}>
+                            {texto}
+                          </Link>
+                        </li>
+                      ))}
                       {usuario.rol === "admin" && (
                         <li>
                           <Link className="dropdown-item" to="/admin/panel">

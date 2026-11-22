@@ -23,21 +23,6 @@ public class CustodiaTransactions {
  @Value("${escrow.recepcion-horas:72}") private long recibirHoras=72;
  private Pago pago(Long id){return pagos.bloquear(id).orElseThrow();}
  private Operacion operacion(Long id){return operaciones.bloquear(id).orElseThrow();}
- @Transactional(isolation=org.springframework.transaction.annotation.Isolation.READ_COMMITTED) public void verificarAdministrativamente(Long id,String actor,String motivo){
-   var p=pago(id);prepararPago(id,true);
-   if(p.getEstado()==EstadoPago.PENDIENTE && !"COBRAR".equals(p.getErrorCustodia())) {
-     for(var o:operaciones.findByPagoIdOrderById(id))eventos.save(new EventoOperacion(o,actor,"VERIFICACION_ADMIN",motivo));
-   }
- }
- @Transactional(isolation=org.springframework.transaction.annotation.Isolation.READ_COMMITTED) public void prepararPago(Long id,boolean verificar){
-   var p=pago(id);
-   if(!Boolean.TRUE.equals(p.getCustodia()))throw new IllegalStateException("Pago histórico; requiere conciliación administrativa");
-   if(p.getEstado()!=EstadoPago.PENDIENTE){if(p.getEstado()==EstadoPago.APROBADO)return;throw new IllegalStateException("Pago cerrado");}
-   if(verificar){
-     if(operaciones.findByPagoIdOrderById(id).stream().anyMatch(o->o.getEstado()!=EstadoOperacion.PAGO_PENDIENTE || o.getAccionPendiente()!=null || o.getVence()!=null && !o.getVence().isAfter(Instant.now())))throw new IllegalStateException("La operación está congelada o cerrada");
-     p.setEtapaCustodia("COBRAR");
-   }
- }
  @Transactional(isolation=org.springframework.transaction.annotation.Isolation.READ_COMMITTED) public void procesarPago(Long id){
    var p=pago(id);String etapa=p.getEtapaCustodia();
    if(etapa==null || etapa.equals("LISTO"))return;
@@ -49,11 +34,27 @@ public class CustodiaTransactions {
    }
    // Precio y vendedor se congelaron al crear la orden; se contrastan al reservar.
    var skins=catalogo.reservar(new CatalogoPagoClient.Reserva(p.getPedidoId(),p.getProductoIds(),"RESERVAR"));
+   boolean simulado = Boolean.TRUE.equals(p.getSimulado());
    for(var o:os){var skin=skins.stream().filter(x->x.id().equals(o.getProductoId())).findFirst().orElseThrow();
      if(!o.getVendedorId().equals(skin.vendedorId()) || o.getPrecio()!=skin.precio().longValueExact())throw new IllegalArgumentException("La cotización cambió");}
-   if(etapa.equals("COBRAR") || p.getMetodo()==MetodoPago.SALDO){
+   if (simulado && skins.stream().anyMatch(skin -> !Boolean.TRUE.equals(skin.demo()))) {
+     throw new IllegalArgumentException("La publicación dejó de estar disponible para pagos simulados.");
+   }
+   // COBRAR permite recuperar los pagos que ya se habían verificado antes de este cambio.
+   if(simulado || etapa.equals("COBRAR") || p.getMetodo()==MetodoPago.SALDO){
      if(p.getMetodo()==MetodoPago.SALDO)usuarios.debitar(p.getUsuarioId(),p.getMontoTotal(),p.getPedidoId());
-     for(var o:os){o.setEstado(MaquinaOperacion.siguiente(o.getEstado(),VERIFICAR));o.setRetenido(true);o.setVence(Instant.now().plus(Duration.ofHours(aceptarHoras)));o.setActualizada(Instant.now());asientos.save(new AsientoCustodia(o,"RETENCION",Math.addExact(o.getPrecio(),o.getComision()),p.getUsuarioId()));eventos.save(new EventoOperacion(o,p.getUsuarioId(),"VERIFICAR","Fondos retenidos; no liberados al vendedor"));}
+     Instant ahora = Instant.now();
+     for (var o : os) {
+       o.setEstado(MaquinaOperacion.siguiente(o.getEstado(), VERIFICAR));
+       o.setRetenido(!simulado);
+       o.setVence(ahora.plus(Duration.ofHours(aceptarHoras)));
+       o.setActualizada(ahora);
+       if (!simulado) {
+         asientos.save(new AsientoCustodia(o, "RETENCION", Math.addExact(o.getPrecio(), o.getComision()), p.getUsuarioId()));
+       }
+       eventos.save(new EventoOperacion(o, "SISTEMA", "VERIFICAR",
+           simulado ? "Pago simulado. Esperando al vendedor." : "Fondos retenidos. Esperando al vendedor."));
+     }
      p.setEstado(EstadoPago.APROBADO);
    }
    p.setEtapaCustodia("LISTO");p.setErrorCustodia(null);
@@ -68,7 +69,7 @@ public class CustodiaTransactions {
      case ACEPTAR,RECHAZAR,ENTREGAR -> !admin && o.getVendedorId().equals(actor);
      case RECIBIR,DISPUTAR -> !admin && o.getCompradorId().equals(actor);
      case CONGELAR,RESOLVER_COMPRADOR,RESOLVER_VENDEDOR -> admin;
-     case CANCELAR -> admin || o.getCompradorId().equals(actor);
+     case CANCELAR -> !admin && o.getCompradorId().equals(actor);
      case AUTO_LIBERAR,EXPIRAR -> sistema;
      default -> false;
    };
@@ -79,18 +80,24 @@ public class CustodiaTransactions {
    if(eventos.findByOperacionIdOrderById(id).stream().anyMatch(e->e.getAccion().equals(a.name()) && e.getActor().equals(actor)))return;
    if(sistema && (o.getVence()==null || o.getVence().isAfter(Instant.now())))throw new IllegalStateException("El plazo no venció");
    if(!sistema && (a==ACEPTAR || a==ENTREGAR) && o.getVence()!=null && !o.getVence().isAfter(Instant.now()))throw new IllegalStateException("Plazo vencido");
-   var siguiente=MaquinaOperacion.siguiente(o.getEstado(),a,o.isRetenido());
-   if(siguiente==EstadoOperacion.COMPLETADA && !o.isRetenido())throw new IllegalStateException("No hay fondos retenidos");
+   MaquinaOperacion.siguiente(o.getEstado(), a, o.isRetenido() || Boolean.TRUE.equals(p.getSimulado()));
    o.setAccionPendiente(a.name());o.setActorPendiente(actor);o.setMotivoPendiente(motivo);o.setSincronizado(false);
  }
  @Transactional(isolation=org.springframework.transaction.annotation.Isolation.READ_COMMITTED) public void procesar(Long id){
    var p=pago(operaciones.pagoId(id));var o=operacion(id);
    if(o.getAccionPendiente()==null)return;
-   var a=MaquinaOperacion.Accion.valueOf(o.getAccionPendiente());var siguiente=MaquinaOperacion.siguiente(o.getEstado(),a,o.isRetenido());String actor=o.getActorPendiente();
+   var a=MaquinaOperacion.Accion.valueOf(o.getAccionPendiente());
+   var siguiente=MaquinaOperacion.siguiente(o.getEstado(),a,o.isRetenido() || Boolean.TRUE.equals(p.getSimulado()));
+   String actor=o.getActorPendiente();
    if(siguiente==EstadoOperacion.COMPLETADA){
      catalogo.reservar(new CatalogoPagoClient.Reserva(p.getPedidoId(),List.of(o.getProductoId()),"VENDER"));
-     usuarios.abonar(o.getVendedorId(),BigDecimal.valueOf(o.getPrecio()),"ESCROW-LIBERAR-"+o.getId());
-     asientos.save(new AsientoCustodia(o,"LIBERACION",o.getPrecio(),actor));asientos.save(new AsientoCustodia(o,"COMISION",o.getComision(),actor));o.setRetenido(false);o.setCompletada(Instant.now());
+     if (o.isRetenido()) {
+       usuarios.abonar(o.getVendedorId(), BigDecimal.valueOf(o.getPrecio()), "ESCROW-LIBERAR-" + o.getId());
+       asientos.save(new AsientoCustodia(o, "LIBERACION", o.getPrecio(), actor));
+       asientos.save(new AsientoCustodia(o, "COMISION", o.getComision(), actor));
+       o.setRetenido(false);
+     }
+     o.setCompletada(Instant.now());
    } else if(siguiente==EstadoOperacion.REEMBOLSADA || siguiente==EstadoOperacion.CANCELADA){
      if(o.isRetenido()){usuarios.abonar(o.getCompradorId(),BigDecimal.valueOf(Math.addExact(o.getPrecio(),o.getComision())),"ESCROW-REEMBOLSO-"+o.getId());asientos.save(new AsientoCustodia(o,"REEMBOLSO",Math.addExact(o.getPrecio(),o.getComision()),actor));o.setRetenido(false);}
      // DESCARTAR no toca una reserva que ya pertenezca a otra operación.

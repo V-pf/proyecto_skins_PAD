@@ -28,7 +28,7 @@ export default function Home() {
                 <Link to="/catalogo" className="btn btn-primary btn-lg">
                   Explorar catálogo
                 </Link>
-                <Link to="/cliente/vender" className="btn btn-outline-light btn-lg">
+                <Link to="/cliente/inventario" className="btn btn-outline-light btn-lg">
                   Vender una skin
                 </Link>
               </div>

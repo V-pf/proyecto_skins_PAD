@@ -1,4 +1,4 @@
-package cl.skinspad.catalogo.inventario;
+package cl.skinspad.catalogo.config;
 
 import cl.skinspad.catalogo.domain.Categoria;
 import cl.skinspad.catalogo.repository.CategoriaRepository;

@@ -22,7 +22,7 @@ export default function Footer() {
                 <Link to="/categorias">Categorías</Link>
               </li>
               <li>
-                <Link to="/cliente/vender">Vender una skin</Link>
+                <Link to="/cliente/inventario">Vender una skin</Link>
               </li>
             </ul>
           </nav>

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { solicitar } from "../services/http";
 import { useOperacion } from "../lib/useOperacion";
-import MenuCuenta from "../components/MenuCuenta";
 export default function Perfil() {
   const { usuario, refrescar } = useAuth();
   const { ejecutar, ocupado } = useOperacion();
@@ -10,9 +9,8 @@ export default function Perfil() {
   if (!usuario) return null;
   return (
     <main className="container py-4">
-      <h1>Editar perfil</h1>
+      <h1 className="mb-4">Editar perfil</h1>
       <div className="row g-3">
-        <MenuCuenta tipo="cliente" activo="/cliente/perfil" />
         <form
           className="col-lg-6"
           onSubmit={(e) => {

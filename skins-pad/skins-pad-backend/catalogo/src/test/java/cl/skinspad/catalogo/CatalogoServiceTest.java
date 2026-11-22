@@ -67,7 +67,7 @@ class CatalogoServiceTest {
         when(productos.bloquear(1L)).thenReturn(Optional.of(producto));
         when(productos.save(producto)).thenReturn(producto);
 
-        service.eliminarProducto(1L, "Prueba docente");
+        service.eliminarProducto(1L, "Prueba docente", false);
 
         assertEquals(EstadoProducto.ELIMINADO, producto.getEstado());
         assertEquals("Prueba docente", producto.getMotivoRechazo());
@@ -76,14 +76,14 @@ class CatalogoServiceTest {
     void noRetiraUnaPublicacionReservada() {
         producto.setReservaPago("compra-1");
         when(productos.bloquear(1L)).thenReturn(Optional.of(producto));
-        assertThrows(IllegalStateException.class, () -> service.eliminarProducto(1L, "Retiro"));
+        assertThrows(IllegalStateException.class, () -> service.eliminarProducto(1L, "Retiro", false));
         assertEquals(EstadoProducto.ACTIVO, producto.getEstado());
     }
     @Test
     void noRetiraUnaSkinVendida() {
         producto.setEstado(EstadoProducto.VENDIDO);
         when(productos.bloquear(1L)).thenReturn(Optional.of(producto));
-        assertThrows(IllegalStateException.class, () -> service.eliminarProducto(1L, "Retiro"));
+        assertThrows(IllegalStateException.class, () -> service.eliminarProducto(1L, "Retiro", false));
         assertEquals(EstadoProducto.VENDIDO, producto.getEstado());
     }
 }

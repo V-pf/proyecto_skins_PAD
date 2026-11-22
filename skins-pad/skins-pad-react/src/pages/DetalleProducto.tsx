@@ -1,3 +1,4 @@
+import ReputacionVendedor from "../components/ReputacionVendedor";
 import BotonReporte from "../components/soporte/FormularioReporte";
 import { useOperacion } from "../lib/useOperacion";
 import { useState } from "react";
@@ -10,7 +11,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCarrito } from "../context/CarritoContext";
 import { useTienda } from "../context/TiendaContext";
 import { useToast } from "../context/ToastContext";
-import { ESTADO_PUBLICACION, DESGASTES, etiquetaTipo, imagenDe, infoGrado } from "../lib/catalogos";
+import { ESTADO_PUBLICACION, DESGASTES, etiquetaTipo, imagenDe, infoGrado, METODOS_PAGO } from "../lib/catalogos";
 import {
   calcularTotales,
   formatoCLP,
@@ -27,13 +28,6 @@ interface CompraForm {
 
   metodoPago: string;
 }
-
-const METODOS = [
-  { valor: "Tarjeta", etiqueta: "Tarjeta de crédito o débito" },
-  { valor: "Transferencia", etiqueta: "Transferencia bancaria" },
-  { valor: "Mercado Pago", etiqueta: "Mercado Pago" },
-  { valor: "Saldo", etiqueta: "Saldo en la billetera Skins PAD" },
-];
 
 export default function DetalleProducto() {
   const { ejecutar, ocupado } = useOperacion();
@@ -55,7 +49,7 @@ export default function DetalleProducto() {
     {
       nombreSteam: usuario?.usuario ?? "",
 
-      metodoPago: "",
+      metodoPago: "Saldo",
     },
     (v): Errores<CompraForm> => ({
       nombreSteam: requerido(v.nombreSteam, "usuario"),
@@ -126,8 +120,10 @@ export default function DetalleProducto() {
         }
       }
       const pago = await pagar([producto.id], form.valores.metodoPago);
-      navigate("/cliente/pagos", {
-        state: { mensaje: "Pago #" + pago.id + " registrado: " + pago.estado },
+      navigate("/cliente/compras", {
+        state: { mensaje: pago.estado === "PENDIENTE"
+          ? `El pago #${pago.id} sigue procesándose.`
+          : `Compra #${pago.id} registrada. Ya está disponible para el vendedor.` },
       });
     });
   }
@@ -150,14 +146,15 @@ export default function DetalleProducto() {
           <figure className="detalle-figura p-4 m-0 text-center">
             <img
               src={producto.imagenes?.[0]?.urlImagen || imagenDe(producto.tipo)}
-              alt={`Ilustración de ejemplo de ${producto.nombre}`}
+              alt={producto.nombre}
               width={480}
               height={300}
               className="img-fluid"
             />
             <figcaption className="mt-2 text-body-secondary small">
-              Imagen ilustrativa. El aspecto final depende del acabado real del
-              ítem.
+              {producto.inventarioId && !producto.demo && producto.imagenes?.length
+                ? "Imagen del inventario de Steam."
+                : "Imagen ilustrativa. El aspecto final depende del acabado real del ítem."}
             </figcaption>
           </figure>
           {producto.imagenes?.slice(1).map(i=><img key={i.id} src={i.urlImagen} alt={producto.nombre} className="img-fluid mb-2" />)}
@@ -165,6 +162,7 @@ export default function DetalleProducto() {
             <h2 id="tit-vendedor" className="h6">
               Sobre el vendedor
             </h2>
+            {producto.vendedorId && <ReputacionVendedor id={producto.vendedorId} />}
             <aside className="stat-tile">
               <address className="mb-2" style={{ fontStyle: "normal" }}>
                 <p className="mb-1">
@@ -193,6 +191,7 @@ export default function DetalleProducto() {
 
         <div className="col-lg-6">
           <p className="badge-grado mb-2">{grado.insignia}</p>
+          {producto.demo && <p className="alert alert-warning">Ítem de prueba del inventario.</p>}
           <BotonReporte tipo="PUBLICACION" objetivoId={String(producto.id)} propietario={producto.vendedorId}/><h1 className="mb-1">
             {producto.nombre}{" "}
             {producto.stattrak && (
@@ -282,13 +281,12 @@ export default function DetalleProducto() {
                 etiqueta="Tu nombre en Steam"
                 placeholder="ej: penquista_gamer"
               />
-              <p>El comprobante se enviará al correo de tu cuenta.</p>
               <Campo
                 form={form}
                 nombre="metodoPago"
                 etiqueta="Método de pago"
                 tipo="select"
-                opciones={METODOS}
+                opciones={producto.demo ? [...METODOS_PAGO.saldo, ...METODOS_PAGO.simulados] : METODOS_PAGO.saldo}
                 textoOpcionVacia="Selecciona un medio"
               />
               <p className="small text-body-secondary">
@@ -299,7 +297,7 @@ export default function DetalleProducto() {
                   )}
                 </strong>
               </p>
-              <button type="submit" className="btn btn-primary">
+              <button type="submit" className="btn btn-primary" disabled={ocupado}>
                 Confirmar compra
               </button>
             </form>

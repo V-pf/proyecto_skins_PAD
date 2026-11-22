@@ -48,8 +48,11 @@ public class StatsService {
     catch (feign.FeignException e) { errors.put("users", "No se pudieron consultar los clientes."); }
     var ps=new ArrayList<cl.skinspad.pago.domain.Pago>();
     legacy.stream().filter(p->!Boolean.TRUE.equals(p.getCustodia()) && (p.getEstado()!=cl.skinspad.pago.domain.EstadoPago.APROBADO || Boolean.TRUE.equals(p.getLiquidado()))).forEach(ps::add);
-    var all=operations.findAll().stream().filter(o->!o.isHistorica()).toList();
     var byId=payments.findAll().stream().collect(java.util.stream.Collectors.toMap(cl.skinspad.pago.domain.Pago::getId,p->p));
+    var all=operations.findAll().stream().filter(o -> {
+      var p = byId.get(o.getPagoId());
+      return !o.isHistorica() && p != null && !Boolean.TRUE.equals(p.getSimulado());
+    }).toList();
     for(var o:all){if(o.getEstado()!=cl.skinspad.pago.escrow.EstadoOperacion.COMPLETADA || o.getCompletada()==null)continue;
       var original=byId.get(o.getPagoId());if(original==null)continue;
       var p=new cl.skinspad.pago.domain.Pago();p.setId(original.getId());p.setUsuarioId(o.getCompradorId());p.setPedidoId(original.getPedidoId());p.setMetodo(original.getMetodo());p.setEstado(cl.skinspad.pago.domain.EstadoPago.APROBADO);p.setLiquidado(true);p.setFecha(o.getCompletada().atZone(ZONE).toLocalDateTime());p.setMontoTotal(java.math.BigDecimal.valueOf(o.getPrecio()+o.getComision()));p.setProductoIds(List.of(o.getProductoId()));p.setPrecios(Map.of(o.getProductoId(),java.math.BigDecimal.valueOf(o.getPrecio())));ps.add(p);

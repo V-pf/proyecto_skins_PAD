@@ -26,6 +26,7 @@ public class Pago {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private Boolean custodia;
+    private Boolean simulado;
     private String etapaCustodia;
     @Column(length=500) private String errorCustodia;
     @org.hibernate.annotations.BatchSize(size=100)

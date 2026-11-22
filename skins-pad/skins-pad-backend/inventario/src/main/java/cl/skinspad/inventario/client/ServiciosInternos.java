@@ -21,7 +21,7 @@ public class ServiciosInternos {
   private final String clave;
 
   public ServiciosInternos(
-      @Value("${STEAM_SERVICE_URL:http://127.0.0.1:8086}") String steamUrl,
+      @Value("${STEAM_SERVICE_URL:http://127.0.0.1:8088}") String steamUrl,
       @Value("${CATALOGO_URL:http://127.0.0.1:8081}") String catalogoUrl,
       InternalApiKey clave) {
     steam = ClienteHttp.cliente(steamUrl, Duration.ofSeconds(120));

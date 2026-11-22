@@ -63,7 +63,8 @@ export default function App() {
         <Route path="/cliente/compras" element={<RutaProtegida><Operaciones vista="compras"/></RutaProtegida>}/>
         <Route path="/cliente/ventas" element={<RutaProtegida><Operaciones vista="ventas"/></RutaProtegida>}/>
         <Route path="/cliente/pagos" element={<RutaProtegida><Pagos /></RutaProtegida>} />
-        <Route path="/cliente/vender" element={<RutaProtegida><Vender /></RutaProtegida>} />
+        <Route path="/cliente/inventario" element={<RutaProtegida><Vender /></RutaProtegida>} />
+        <Route path="/cliente/vender" element={<Navigate to="/cliente/inventario" replace />} />
         <Route path="/cliente/publicaciones" element={<RutaProtegida><MisPublicaciones /></RutaProtegida>} />
 
         {(["estadisticas", "pagos", "web"] as const).map(seccion =>

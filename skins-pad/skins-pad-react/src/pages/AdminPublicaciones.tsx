@@ -11,6 +11,7 @@ import { formatoCLP } from "../lib/formato";
 import { useFormulario } from "../lib/useFormulario";
 import type { Errores } from "../lib/useFormulario";
 import { largo, seleccion } from "../lib/validaciones";
+import type { Producto } from "../types";
 
 interface RechazoForm {
   [clave: string]: string | boolean;
@@ -31,6 +32,10 @@ const MOTIVOS = [
   { valor: "Otro", etiqueta: "Otro" },
 ];
 
+function requiereRevision(p: Producto) {
+  return p.estado === "activa" && p.revisionApta == null;
+}
+
 export default function AdminPublicaciones({ integrado = false }: { integrado?: boolean }) {
   const Titulo = integrado ? "h3" : "h2";
   const { ejecutar, ocupado } = useOperacion();
@@ -49,33 +54,28 @@ export default function AdminPublicaciones({ integrado = false }: { integrado?: 
   );
 
   const objetivo = productos.find((p) => p.id === objetivoId) ?? null;
+  const sinRevisar = productos.filter(requiereRevision).length;
 
-  // La aprobación deja la publicación activa y limpia el motivo anterior.
-  function aprobar(id: number) {
+  function marcarApta(p: Producto) {
     void ejecutar(async () => {
-      const p = productos.find((x) => x.id === id);
-      if (!p) return;
-      await actualizarProducto(id, {
-        estado: "activa",
-        motivoRechazo: undefined,
-      });
-      if (objetivoId === id) setObjetivoId(null);
-      setAviso(`«${p.nombre}» fue aprobada y ya aparece en el catálogo.`);
+      await actualizarProducto(p.id, { estado: "activa" });
+      setAviso(p.estado === "activa"
+        ? `«${p.nombre}» quedó marcada como apta.`
+        : `«${p.nombre}» quedó marcada como apta. El vendedor puede volver a publicarla desde su inventario.`);
     });
   }
 
-  // Retira las publicaciones activas o rechaza las pendientes y guarda el motivo para el vendedor.
-  function rechazar(e: FormEvent) {
+  function marcarNoApta(e: FormEvent) {
     e.preventDefault();
     void ejecutar(async () => {
       if (!objetivo) return;
       if (!form.validar()) return;
       await actualizarProducto(objetivo.id, {
-        estado: objetivo.estado==="activa"?"eliminada":"rechazada",
+        estado: "rechazada",
         motivoRechazo: `${form.valores.motivo}: ${form.valores.detalle.trim()}`,
       });
       setAviso(
-        `«${objetivo.nombre}» fue moderada. El motivo se puede consultar en Mis publicaciones.`,
+        `«${objetivo.nombre}» se retiró del catálogo. El vendedor puede consultar el motivo en Mis publicaciones.`,
       );
       setObjetivoId(null);
       form.reiniciar();
@@ -102,23 +102,20 @@ export default function AdminPublicaciones({ integrado = false }: { integrado?: 
             </div>
           )}
           <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
-            <p role="status" className="mb-0">{productos.filter(p => p.estado === "pendiente").length} publicaciones pendientes de aprobación.</p>
+            <p role="status" className="mb-0">{sinRevisar} publicaciones activas por revisar.</p>
             <button type="button" className="btn btn-outline-light" onClick={() => void ejecutar(recargar)} disabled={ocupado}>Actualizar publicaciones</button>
           </div>
           <label>Estado de publicación<select className="form-select mb-3" value={filtro} onChange={e=>setFiltro(e.target.value)}><option value="">Todos</option>{Object.entries(ESTADO_PUBLICACION).map(([k,v])=><option key={k} value={k}>{v.texto}</option>)}</select></label>
           <div className="table-responsive mb-4">
             <table className="table align-middle">
-              <caption>
-                {productos.length} publicaciones en total (
-                {productos.filter((p) => p.estado === "pendiente").length}{" "}
-                pendientes)
-              </caption>
+              <caption>{productos.length} publicaciones en total</caption>
               <thead>
                 <tr>
                   <th scope="col">Skin</th>
                   <th scope="col">Vendedor</th>
                   <th scope="col">Precio</th>
                   <th scope="col">Estado</th>
+                  <th scope="col">Moderación</th>
                   <th scope="col">
                     <span className="visually-hidden">Acciones</span>
                   </th>
@@ -128,8 +125,7 @@ export default function AdminPublicaciones({ integrado = false }: { integrado?: 
                 {productos.filter(p=>!filtro || p.estado===filtro)
                   .sort(
                     (a, b) =>
-                      Number(b.estado === "pendiente") -
-                        Number(a.estado === "pendiente") || b.id - a.id,
+                      Number(requiereRevision(b)) - Number(requiereRevision(a)) || b.id - a.id,
                   )
                   .map((p) => (
                     <tr
@@ -149,26 +145,31 @@ export default function AdminPublicaciones({ integrado = false }: { integrado?: 
                         </span>
                       </td>
                       <td>
+                        {p.revisionApta === true ? "Apta" : p.revisionApta === false ? "No apta"
+                          : requiereRevision(p) ? "Por revisar" : "—"}
+                      </td>
+                      <td>
                         <div className="d-flex gap-2">
                           <button
                             type="button"
                             className="btn btn-sm btn-outline-light"
-                            disabled={ocupado || p.estado !== "pendiente"}
-                            onClick={() => aprobar(p.id)}
+                            disabled={ocupado || !(requiereRevision(p) ||
+                              (p.revisionApta === false && (p.estado === "rechazada" || p.estado === "eliminada")))}
+                            onClick={() => marcarApta(p)}
                           >
-                            Aprobar
+                            Marcar apta
                           </button>
                           <button
                             type="button"
                             className="btn btn-sm btn-outline-light"
-                            disabled={ocupado || (p.estado !== "pendiente" && p.estado !== "activa")}
+                            disabled={ocupado || p.estado !== "activa"}
                             onClick={() => {
                               form.reiniciar();
                               setObjetivoId(p.id);
                               setAviso("");
                             }}
                           >
-                            {p.estado==="activa"?"Retirar":"Rechazar"}
+                            Marcar no apta
                           </button>
                         </div>
                       </td>
@@ -178,18 +179,11 @@ export default function AdminPublicaciones({ integrado = false }: { integrado?: 
             </table>
           </div>
 
-          <Modal abierto={objetivo !== null} titulo={objetivo?.estado === "activa" ? "Retirar publicación" : "Rechazar publicación"} onCerrar={() => setObjetivoId(null)}>
-          <form className="stat-tile" onSubmit={rechazar} noValidate>
-            <h2 className="h6">{objetivo?.estado === "activa" ? "Retirar del catálogo con motivo" : "Rechazar con motivo"}</h2>
-            {objetivo ? (
+          <Modal abierto={objetivo !== null} titulo="Retirar publicación" onCerrar={() => setObjetivoId(null)}>
+          <form className="stat-tile" onSubmit={marcarNoApta} noValidate>
+            {objetivo && (
               <p className="small text-body-secondary">
-                Publicación seleccionada: <strong>{objetivo.nombre}</strong> de{" "}
-                {objetivo.vendedor}.
-              </p>
-            ) : (
-              <p className="small text-body-secondary">
-                Presiona «Rechazar» en una fila de la tabla para elegir la
-                publicación.
+                Se retirará <strong>{objetivo.nombre}</strong> de {objetivo.vendedor}.
               </p>
             )}
             <Campo
@@ -220,7 +214,7 @@ export default function AdminPublicaciones({ integrado = false }: { integrado?: 
               className="btn btn-outline-light"
               disabled={!objetivo || ocupado}
             >
-              {ocupado ? "Guardando…" : objetivo?.estado === "activa" ? "Confirmar retiro" : "Enviar rechazo"}
+              {ocupado ? "Guardando…" : "Confirmar retiro"}
             </button>
           </form>
           </Modal>

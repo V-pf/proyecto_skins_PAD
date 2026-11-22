@@ -55,7 +55,9 @@ public class AccesoFilter implements GlobalFilter, Ordered {
     // Permite consultar el catálogo y los perfiles públicos, registrarse e iniciar sesión.
     if (m.equals("OPTIONS")
         || (m.equals("GET")
-            && (p.startsWith("/api/productos")
+            && (p.equals("/api/steam/callback")
+                || p.matches("/api/calificaciones/vendedor/[^/]+")
+                || p.startsWith("/api/productos")
                 || p.startsWith("/api/categorias")
                 || p.equals("/api/usuarios/publicos")))
         || (m.equals("POST") && (p.equals("/api/auth/login") || p.equals("/api/auth/registro"))))
@@ -151,15 +153,16 @@ public class AccesoFilter implements GlobalFilter, Ordered {
       return cliente.get().uri((p.startsWith("/api/tickets")?tickets:reportes)+"/api/soporte/acceso?tipo="+tipo+"&id="+objetivo).header("Authorization","Bearer "+token).retrieve().bodyToMono(Map.class).map(v->Boolean.TRUE.equals(v.get("permitido"))).onErrorReturn(false);
     }
     if(p.matches("/api/pagos/[0-9]+/(confirmar|rechazar|reembolsar)"))return Mono.just(false);
+    if(p.matches("/api/pagos/[0-9]+/comprobante(/verificar)?") && !leer)return Mono.just(false);
     if (p.startsWith("/api/operaciones")) {
-      if(p.matches("/api/operaciones/pagos/[0-9]+/verificar"))return Mono.just(admin && m.equals("POST"));
       if(p.equals("/api/operaciones"))return Mono.just(leer);
       if(p.matches("/api/operaciones/[0-9]+(/.*)?"))return cliente.get().uri(pagos+"/api/operaciones/"+p.split("/")[3]).header("Authorization","Bearer "+token).retrieve().bodyToMono(Map.class).map(v->{
         Map o=(Map)v.get("operacion");String action=p.substring(p.lastIndexOf('/')+1);
         if(leer)return admin || id.equals(o.get("compradorId")) || id.equals(o.get("vendedorId"));
         if(!m.equals("POST"))return false;
-        if(java.util.Set.of("congelar","resolver-comprador","resolver-vendedor").contains(action))return admin;
-        if(action.equals("cancelar"))return admin || id.equals(o.get("compradorId"));
+        if(action.equals("congelar"))return admin && "EN_DISPUTA".equals(o.get("estado"));
+        if(java.util.Set.of("resolver-comprador","resolver-vendedor").contains(action))return admin;
+        if(action.equals("cancelar"))return !admin && id.equals(o.get("compradorId"));
         if(admin)return false;
         return java.util.Set.of("aceptar","rechazar","entregar").contains(action)?id.equals(o.get("vendedorId")):java.util.Set.of("recibir","disputar").contains(action)&&id.equals(o.get("compradorId"));
       });
@@ -169,6 +172,13 @@ public class AccesoFilter implements GlobalFilter, Ordered {
     if (p.equals("/api/auth/validar"))
       return Mono.just(token.equals(x.getRequest().getQueryParams().getFirst("token")));
     if (p.equals("/api/pagos/mis-ventas")) return Mono.just(leer && !admin);
+    if (p.equals("/api/calificaciones") || p.equals("/api/steam/vincular")
+        || p.equals("/api/inventario/sincronizar") || p.equals("/api/inventario/publicaciones")) {
+      return Mono.just(m.equals("POST") && "cliente".equals(u.get("rol")));
+    }
+    if (p.equals("/api/inventario") || p.matches("/api/inventario/[0-9]+/precios")) {
+      return Mono.just(leer && "cliente".equals(u.get("rol")));
+    }
     if (p.equals("/api/auth/logout")) return Mono.just(true);
     if (p.equals("/api/pagos/checkout")) return Mono.just(!admin);
     if (admin && (p.startsWith("/api/carritos") || p.endsWith("/retiros") || p.endsWith("/perfil") || (p.equals("/api/productos") && m.equals("POST")))) return Mono.just(false);

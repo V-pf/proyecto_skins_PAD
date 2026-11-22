@@ -1,143 +1,67 @@
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import Operaciones from "./Operaciones";
-import { Link } from "react-router-dom";
-import { useState } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
 import type { Pago } from "../lib/api";
-import { pagoService } from "../services/pago.service";
 import { useTienda } from "../context/TiendaContext";
 import { useAuth } from "../context/AuthContext";
-import { useOperacion } from "../lib/useOperacion";
 import { formatoCLP } from "../lib/formato";
-function Fila({ p, admin }: { p: Pago; admin: boolean }) {
-  const { ejecutar, ocupado } = useOperacion(),
-    { recargar } = useTienda();
-  const [banco, setBanco] = useState(""),
-    [numero, setNumero] = useState(""),
-    [url, setUrl] = useState(""),
-    [aviso, setAviso] = useState("");
-  // Después de registrar un comprobante o resolver un pago, se recargan los datos de la tienda.
-  const accion = (operacion: () => Promise<void>) =>
-    ejecutar(async () => {
-      await operacion();
-      setAviso("Operación registrada.");
-      await recargar();
-    });
+
+function Fila({ pago }: { pago: Pago }) {
   return (
     <article className="stat-tile mb-3">
-      <h3 className="h6">Pago #{p.id}</h3>
+      <h3 className="h6">
+        Pago #{pago.id} {pago.simulado && <span className="badge text-bg-secondary">Simulado</span>}
+      </h3>
       <p>
-        {p.fecha.slice(0, 10)} · {formatoCLP(p.montoTotal)} · {p.metodo} ·{" "}
-        {p.estado}{(p.cuotas??1)>1 && ` · ${p.cuotas} cuotas`}
+        {pago.fecha.slice(0, 10)} · {formatoCLP(pago.montoTotal)} · {pago.metodo} · {pago.estado}
+        {(pago.cuotas ?? 1) > 1 && ` · ${pago.cuotas} cuotas`}
       </p>
-      {p.numeroOperacion && <p>Transferencia Nº {p.numeroOperacion}</p>}
-      {p.estado === "RECHAZADO" && <p role="status">{p.referenciaExterna || "El pago fue rechazado."}</p>}
-      {aviso && <p role="status">{aviso}</p>}
-      {p.estado === "PENDIENTE" && p.metodo === "TRANSFERENCIA" && !admin && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void accion(() => pagoService.registrarComprobante(p.id, {
-              banco,
-              numeroOperacion: numero,
-              archivoUrl: url,
-            }));
-          }}
-        >
-          <label>
-            Banco
-            <input
-              className="form-control"
-              required
-              value={banco}
-              onChange={(e) => setBanco(e.target.value)}
-            />
-          </label>
-          <label>
-            Número de operación
-            <input
-              className="form-control"
-              required
-              value={numero}
-              onChange={(e) => setNumero(e.target.value)}
-            />
-          </label>
-          <label>
-            Enlace al comprobante
-            <input
-              className="form-control"
-              type="url"
-              required
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-            />
-          </label>
-          <button disabled={ocupado} className="btn btn-primary">
-            Registrar comprobante
-          </button>
-        </form>
-      )}
-      {admin && p.estado === "PENDIENTE" && (
-        <div className="d-flex gap-2">
-          {p.metodo === "TRANSFERENCIA" && (
-            <button
-              disabled={ocupado}
-              onClick={() =>
-                void ejecutar(async () => {
-                  const c = await pagoService.obtenerComprobante(p.id);
-                  if (
-                    window.confirm(
-                      c.banco +
-                        " · " +
-                        c.numeroOperacion +
-                        " · " +
-                        c.archivoUrl +
-                        "\n¿Verificaste este comprobante?",
-                    )
-                  ) {
-                    await pagoService.verificarComprobante(p.id);
-                    setAviso("Comprobante verificado.");
-                  }
-                })
-              }
-            >
-              Revisar comprobante
-            </button>
-          )}
-        </div>
-      )}
+      {pago.numeroOperacion && <p>Transferencia n.º {pago.numeroOperacion}</p>}
+      {pago.estado === "RECHAZADO" && <p>{pago.referenciaExterna || "El pago fue rechazado."}</p>}
     </article>
   );
 }
+
 export default function Pagos({ gestion = false, mostrarTitulo = true }: { gestion?: boolean; mostrarTitulo?: boolean }) {
-  const { pagos, recargar, cargando } = useTienda(),
-    { usuario } = useAuth(),
-    { state } = useLocation();
+  const { pagos, recargar, cargando } = useTienda();
+  const { usuario } = useAuth();
+  const { state } = useLocation();
   const [params, setParams] = useSearchParams();
   const filtroEstado = params.get("estado") ?? "";
   const administrar = gestion && usuario?.rol === "admin";
-  // En gestión se muestran todos los pagos. En la cuenta se muestran solo los propios.
   const visibles = administrar
-    ? pagos.filter(p => !filtroEstado || p.estado === filtroEstado).sort((a, b) => Number(b.estado === "PENDIENTE") - Number(a.estado === "PENDIENTE") || b.fecha.localeCompare(a.fecha))
-    : pagos.filter(p => p.usuarioId === usuario?.id);
+    ? pagos.filter((p) => !filtroEstado || p.estado === filtroEstado)
+        .sort((a, b) => b.fecha.localeCompare(a.fecha))
+    : pagos.filter((p) => p.usuarioId === usuario?.id);
+
   if (cargando.pagos) return <p className="container py-4">Cargando pagos…</p>;
   return (
     <section className={administrar ? "" : "container py-4"}>
-      {mostrarTitulo && <h2>{administrar ? "Gestor de Pagos" : "Mis pagos"}</h2>}
-      {administrar && <Operaciones vista="excepciones" integrado/>}
-      {!administrar&&<p><Link to="/cliente/compras">Ver entregas, confirmar recepción o abrir una disputa →</Link></p>}
-      {administrar && <label className="d-block mb-3">Estado<select className="form-select" value={filtroEstado} onChange={e=>{const next=new URLSearchParams(params); e.target.value?next.set("estado",e.target.value):next.delete("estado");setParams(next);}}><option value="">Todos</option>{["PENDIENTE","APROBADO","RECHAZADO","REEMBOLSADO"].map(e=><option key={e}>{e}</option>)}</select></label>}
+      {mostrarTitulo && <h2>{administrar ? "Gestión de pagos" : "Mis pagos"}</h2>}
+      {administrar
+        ? <Operaciones vista="excepciones" integrado />
+        : <p><Link to="/cliente/compras">Ver entregas y operaciones en Mis compras</Link></p>}
+      {administrar && (
+        <label className="d-block mb-3">
+          Estado
+          <select className="form-select" value={filtroEstado} onChange={(e) => {
+            const next = new URLSearchParams(params);
+            if (e.target.value) next.set("estado", e.target.value);
+            else next.delete("estado");
+            setParams(next);
+          }}>
+            <option value="">Todos</option>
+            {["PENDIENTE", "APROBADO", "RECHAZADO", "REEMBOLSADO"].map((estado) => (
+              <option key={estado}>{estado}</option>
+            ))}
+          </select>
+        </label>
+      )}
       {state?.mensaje && <p role="status">{state.mensaje}</p>}
-      <button
-        className="btn btn-outline-light mb-3"
-        onClick={() => void recargar()}
-      >
-        Actualizar
-      </button>
+      <button className="btn btn-outline-light mb-3" onClick={() => void recargar()}>Actualizar</button>
       {!visibles.length && <p>No hay pagos registrados.</p>}
-      <details open={!administrar}><summary>{administrar?"Pagos y revisión de comprobantes":"Historial de pagos"}</summary>
-      {visibles.map((p) => (
-        <Fila key={p.id} p={p} admin={administrar} />
-      ))}
+      <details open={!administrar}>
+        <summary>Historial de pagos</summary>
+        {visibles.map((pago) => <Fila key={pago.id} pago={pago} />)}
       </details>
     </section>
   );

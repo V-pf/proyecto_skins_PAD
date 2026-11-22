@@ -16,7 +16,6 @@ interface Tienda {
   pagos: Pago[];
   cargando: { productos: boolean; usuarios: boolean; categorias: boolean; pagos: boolean };
   recargar: () => Promise<void>;
-  crearProducto: (p: Omit<Producto, "id">) => Promise<Producto>;
   actualizarProducto: (id: number, parche: Partial<Producto>) => Promise<void>;
   actualizarUsuario: (id: string, parche: Partial<Usuario>) => Promise<void>;
   pagar: (ids: number[], metodo: string) => Promise<Pago>;
@@ -53,6 +52,8 @@ export function TiendaProvider({ children }: { children: ReactNode }) {
     francotirador: "Rifles de francotirador",
     pistola: "Pistolas",
     subfusil: "Subfusiles",
+    escopeta: "Escopetas",
+    ametralladora: "Ametralladoras",
     cuchillo: "Cuchillos",
     guantes: "Guantes",
     sticker: "Stickers",
@@ -83,13 +84,6 @@ export function TiendaProvider({ children }: { children: ReactNode }) {
       productos: listaProductos.cargaInicial, usuarios: listaUsuarios.cargaInicial,
       categorias: listaCategorias.cargaInicial, pagos: listaPagos.cargaInicial,
     },
-    // Incorpora la publicación devuelta por el servidor y vuelve a consultar el catálogo.
-    async crearProducto(p) {
-      const nuevo = await productoService.crear(body(p));
-      setProductos((prev) => [...prev, nuevo]);
-      await listaProductos.recargar();
-      return nuevo;
-    },
     // Combina los cambios con los datos actuales porque el catálogo recibe la publicación completa.
     async actualizarProducto(id, parche) {
       const actual = productos.find((p) => p.id === id);
@@ -100,7 +94,9 @@ export function TiendaProvider({ children }: { children: ReactNode }) {
         await listaProductos.recargar();
         return;
       }
-      const nuevo = await productoService.actualizar(id, body({ ...actual, ...parche }));
+      const nuevo = usuario?.rol === "admin" && (parche.estado === "activa" || parche.estado === "rechazada")
+        ? await productoService.cambiarEstado(id, estados[parche.estado], parche.motivoRechazo)
+        : await productoService.actualizar(id, body({ ...actual, ...parche }));
       setProductos((prev) => prev.map((p) => (p.id === id ? nuevo : p)));
       await listaProductos.recargar();
     },
@@ -126,9 +122,12 @@ export function TiendaProvider({ children }: { children: ReactNode }) {
         metodo: metodos[metodo],
         solicitudId: solicitud.current.id,
       });
-      solicitud.current = {id:crypto.randomUUID(),firma:""};
       await refrescar();
       await recargar();
+      if (pago.estado !== "PENDIENTE") solicitud.current = {id:crypto.randomUUID(),firma:""};
+      if (pago.estado !== "APROBADO" && pago.estado !== "PENDIENTE") {
+        throw new Error("No se pudo completar el pago. Revisa la disponibilidad y tu saldo.");
+      }
       return pago;
     },
   };

@@ -2,7 +2,7 @@ package cl.skinspad.catalogo.service;
 
 import cl.skinspad.catalogo.domain.EstadoProducto;
 import cl.skinspad.catalogo.domain.ImagenProducto;
-import cl.skinspad.catalogo.inventario.InventarioClient;
+import cl.skinspad.catalogo.client.InventarioClient;
 import cl.skinspad.catalogo.repository.ProductoRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

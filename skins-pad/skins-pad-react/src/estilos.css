@@ -73,6 +73,20 @@ a:hover { color: var(--acento-oscuro); }
 .nav-link { color: var(--texto-tenue); }
 .nav-link.active, .nav-link:hover { color: var(--texto); }
 
+@media (max-width: 991.98px) {
+  .sitio-header .navbar-collapse.show {
+    max-height: calc(100dvh - 4rem);
+    overflow-y: auto;
+  }
+}
+
+@media (min-width: 992px) {
+  #menu-cuenta {
+    max-height: calc(100dvh - 4rem);
+    overflow-y: auto;
+  }
+}
+
 /* ---------- pie ---------- */
 .sitio-footer {
   background: var(--panel);

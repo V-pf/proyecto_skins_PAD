@@ -31,7 +31,19 @@ spring:
             - id: catalogo-service
               uri: ${CATALOGO_URL:http://localhost:8081}
               predicates:
-                - Path=/api/productos/**,/api/categorias/**
+                - Path=/api/productos/**,/api/categorias/**,/api/inventario/publicaciones
+            - id: inventario-service
+              uri: ${INVENTARIO_SERVICE_URL:http://127.0.0.1:8082}
+              predicates:
+                - Path=/api/inventario,/api/inventario/**
+            - id: steam-service
+              uri: ${STEAM_SERVICE_URL:http://127.0.0.1:8088}
+              predicates:
+                - Path=/api/steam/**
+            - id: calificacion-service
+              uri: ${CALIFICACION_URL:http://localhost:8089}
+              predicates:
+                - Path=/api/calificaciones,/api/calificaciones/**
             - id: carrito-service
               uri: ${CARRITO_URL:http://localhost:8083}
               predicates:

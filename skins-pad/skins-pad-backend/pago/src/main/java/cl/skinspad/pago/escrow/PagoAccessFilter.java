@@ -17,7 +17,7 @@ public class PagoAccessFilter extends OncePerRequestFilter {
    else if(path.matches("/api/pagos/[0-9]+(/.*)?")){
      var pago=pagos.findById(Long.valueOf(path.split("/")[3]));
      if(pago.isEmpty()){response.sendError(404);return;}
-     ok=(admin||u.id().equals(pago.get().getUsuarioId()))&&(get||path.endsWith("/comprobante")||admin&&path.endsWith("/comprobante/verificar"));
+     ok=get&&(admin||u.id().equals(pago.get().getUsuarioId()));
    }else if(path.startsWith("/api/pagos/pedido/")){String ref=path.substring(18).replaceFirst("/estado$","");var pago=pagos.findByPedidoId(ref);ok=get&&pago.isPresent()&&(admin||u.id().equals(pago.get().getUsuarioId()));}
    if(!ok){response.sendError(403);return;}
    chain.doFilter(new HttpServletRequestWrapper(r){@Override public String getHeader(String name){return name.equalsIgnoreCase("X-Skins-Usuario")?u.id():super.getHeader(name);}},response);

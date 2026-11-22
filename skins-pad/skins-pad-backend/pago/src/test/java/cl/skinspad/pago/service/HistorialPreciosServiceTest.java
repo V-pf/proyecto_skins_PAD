@@ -1,4 +1,4 @@
-package cl.skinspad.pago.mercado;
+package cl.skinspad.pago.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -11,17 +11,17 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-class PrecioMercadoServiceTest {
+class HistorialPreciosServiceTest {
   @Test
   void adaptaPublicacionesAnterioresSinConfundirDesgasteOVariante() {
     assertEquals(
         "StatTrak™ AK-47 | Redline (Field-Tested)",
-        PrecioMercadoService.nombreMercado(
-            new PrecioMercadoService.Producto(1L, "AK-47 | Redline", false, "ft", true)));
+        HistorialPreciosService.nombreMercado(
+            new HistorialPreciosService.Producto(1L, "AK-47 | Redline", false, "ft", true)));
     assertEquals(
         "AK-47 | Redline (Field-Tested)",
-        PrecioMercadoService.nombreMercado(
-            new PrecioMercadoService.Producto(
+        HistorialPreciosService.nombreMercado(
+            new HistorialPreciosService.Producto(
                 1L, "AK-47 | Redline (Field-Tested)", false, "ft", false)));
   }
 
@@ -45,7 +45,7 @@ class PrecioMercadoServiceTest {
     servidor.start();
     try {
       var repo = mock(OperacionRepository.class);
-      var service = new PrecioMercadoService(repo);
+      var service = new HistorialPreciosService(repo);
       ReflectionTestUtils.setField(
           service, "catalogo", "http://127.0.0.1:" + servidor.getAddress().getPort());
       var fecha =

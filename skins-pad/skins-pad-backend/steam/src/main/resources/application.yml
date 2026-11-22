@@ -1,6 +1,6 @@
 server:
   address: ${STEAM_BIND_ADDRESS:${SERVICE_BIND_ADDRESS:127.0.0.1}}
-  port: ${STEAM_PORT:8086}
+  port: ${STEAM_PORT:8088}
 spring:
   application:
     name: skins-pad-steam

@@ -50,6 +50,7 @@ export interface Pago {
   metodo: string;
   fecha: string;
   montoTotal: number;
+  simulado?: boolean | null;
   numeroOperacion?: string;
   liquidado?:boolean;
   cuotas?: number;

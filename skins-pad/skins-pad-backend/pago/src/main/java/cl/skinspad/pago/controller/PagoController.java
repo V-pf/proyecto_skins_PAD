@@ -19,7 +19,7 @@ public class PagoController {
     private final cl.skinspad.pago.escrow.OperacionRepository operaciones;
     @GetMapping("/mis-ventas") public List<cl.skinspad.pago.service.CheckoutService.Venta> ventas(@RequestHeader("X-Skins-Usuario") String id){
         var resultado=new java.util.ArrayList<>(checkout.ventas(id));
-        var grupos=operaciones.findByVendedorIdOrderByIdDesc(id).stream().filter(o->!o.isHistorica() && o.getEstado()==cl.skinspad.pago.escrow.EstadoOperacion.COMPLETADA).collect(java.util.stream.Collectors.groupingBy(cl.skinspad.pago.escrow.Operacion::getPagoId));
+        var grupos=operaciones.findVentasLiquidadasDeVendedor(id).stream().collect(java.util.stream.Collectors.groupingBy(cl.skinspad.pago.escrow.Operacion::getPagoId));
         grupos.forEach((pagoId,lineas)->resultado.add(new cl.skinspad.pago.service.CheckoutService.Venta(pagoId,lineas.stream().map(cl.skinspad.pago.escrow.Operacion::getCompletada).max(java.util.Comparator.naturalOrder()).orElseThrow().atZone(java.time.ZoneId.of("America/Santiago")).toLocalDateTime(),EstadoPago.APROBADO,lineas.stream().map(cl.skinspad.pago.escrow.Operacion::getProductoId).toList(),lineas.stream().collect(java.util.stream.Collectors.toMap(cl.skinspad.pago.escrow.Operacion::getProductoId,o->java.math.BigDecimal.valueOf(o.getPrecio()))))));
         return resultado;
     }
@@ -53,17 +53,6 @@ public class PagoController {
     @GetMapping("/usuario/{usuarioId}")
     public List<Pago> usuario(@PathVariable String usuarioId) {
         return service.listarPorUsuario(usuarioId);
-    }
-
-    @PostMapping("/{id}/comprobante")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ComprobanteTransferencia comprobante(@PathVariable Long id, @Valid @RequestBody ComprobanteRequest r) {
-        return service.registrarComprobante(id, r);
-    }
-
-    @PostMapping("/{id}/comprobante/verificar")
-    public ComprobanteTransferencia verificar(@PathVariable Long id, @RequestBody(required = false) VerificarComprobanteRequest r) {
-        return service.verificarComprobante(id, r == null?null:r.verificadoUrl());
     }
 
     @PostMapping("/{id}/confirmar")

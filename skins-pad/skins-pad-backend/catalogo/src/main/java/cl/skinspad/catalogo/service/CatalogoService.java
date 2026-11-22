@@ -1,9 +1,12 @@
 package cl.skinspad.catalogo.service;
 
+import cl.skinspad.catalogo.client.InventarioAuth;
+import cl.skinspad.catalogo.client.InventarioClient;
 import cl.skinspad.catalogo.domain.Categoria;
 import cl.skinspad.catalogo.domain.EstadoProducto;
 import cl.skinspad.catalogo.domain.ImagenProducto;
 import cl.skinspad.catalogo.domain.Producto;
+import cl.skinspad.catalogo.dto.EstadoPublicacionInventario;
 import cl.skinspad.catalogo.dto.ImagenRequest;
 import cl.skinspad.catalogo.dto.ProductoRequest;
 import cl.skinspad.catalogo.repository.CategoriaRepository;
@@ -12,10 +15,15 @@ import cl.skinspad.catalogo.repository.ProductoRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,9 +31,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CatalogoService {
 
+    private static final String NO_DISPONIBLE = "El ítem dejó de estar disponible en Steam.";
+
     private final ProductoRepository productos;
     private final CategoriaRepository categorias;
     private final ImagenProductoRepository imagenes;
+    private final InventarioClient inventario;
 
     @Transactional(readOnly = true)
     // La búsqueda aplica solo los filtros que llegaron en la consulta.
@@ -86,6 +97,14 @@ public class CatalogoService {
         // Se bloquea la publicación al editar para respetar la reserva de una compra.
         Producto producto = productos.bloquear(id).orElseThrow(()->new EntityNotFoundException("Publicación inexistente"));
         if(producto.getReservaPago()!=null) throw new IllegalStateException("Esta skin está reservada o vendida");
+        if (producto.getInventarioId() != null) {
+            if (producto.getEstado() != EstadoProducto.ACTIVO && producto.getEstado() != EstadoProducto.PENDIENTE_APROBACION) {
+                throw new IllegalStateException("Solo se pueden editar publicaciones activas o pendientes.");
+            }
+            producto.setPrecio(request.precio());
+            if(request.estado()==EstadoProducto.ELIMINADO) producto.setEstado(EstadoProducto.ELIMINADO);
+            return productos.save(producto);
+        }
         Categoria categoria = buscarCategoria(request.categoriaId());
         aplicarDatosProducto(producto, request, categoria);
         return productos.save(producto);
@@ -136,28 +155,39 @@ public class CatalogoService {
             // La referencia permite identificar qué pago puede venderla o devolverla al catálogo.
             switch(r.accion()) {
                 case "COTIZAR" -> {
-                    if(p.getEstado()!=EstadoProducto.ACTIVO || p.getReservaPago()!=null)throw new IllegalStateException("Skin no disponible");
+                    verificarDisponibleParaCompra(p);
                 }
                 case "DESCARTAR" -> {
                     if(r.referencia().equals(p.getReservaPago()) && p.getEstado()==EstadoProducto.INACTIVO){
-                        p.setReservaPago(null);p.setEstado(EstadoProducto.ACTIVO);
+                        liberarReserva(p);
                     }
                 }
                 case "RESERVAR" -> {
                     if(r.referencia().equals(p.getReservaPago())) continue;
-                    if(p.getReservaPago()!=null || p.getEstado()!=EstadoProducto.ACTIVO) throw new IllegalStateException("Skin no disponible");
+                    verificarDisponibleParaCompra(p);
                     p.setReservaPago(r.referencia());p.setEstado(EstadoProducto.INACTIVO);
                 }
                 case "VENDER","LIBERAR" -> {
-                    if("LIBERAR".equals(r.accion()) && p.getReservaPago()==null && p.getEstado()==EstadoProducto.ACTIVO) continue;
+                    if ("LIBERAR".equals(r.accion()) && p.getReservaPago() == null
+                        && p.getEstado() == estadoAlLiberar(p)) continue;
                     if(!r.referencia().equals(p.getReservaPago())) throw new IllegalStateException("Reserva ajena");
                     if("VENDER".equals(r.accion())) p.setEstado(EstadoProducto.VENDIDO);
-                    else {p.setReservaPago(null);p.setEstado(EstadoProducto.ACTIVO);}
+                    else liberarReserva(p);
                 }
                 default -> throw new IllegalArgumentException("Acción inválida");
             }
         }
         return productos.saveAll(lista);
+    }
+
+    private void liberarReserva(Producto producto) {
+        producto.setReservaPago(null);
+        producto.setEstado(estadoAlLiberar(producto));
+    }
+
+    private EstadoProducto estadoAlLiberar(Producto producto) {
+        return Boolean.TRUE.equals(producto.getRetiradaParaInventario())
+            ? EstadoProducto.ELIMINADO : EstadoProducto.ACTIVO;
     }
 
     @Transactional
@@ -173,18 +203,43 @@ public class CatalogoService {
 
     @Transactional
     public Producto actualizarEstado(Long id, EstadoProducto estado) {
-        if (estado == null) {
-            throw new IllegalArgumentException("Estado obligatorio");
+        return actualizarEstado(id, estado, null);
+    }
+
+    @Transactional
+    public Producto actualizarEstado(Long id, EstadoProducto estado, String motivoRechazo) {
+        if (estado != EstadoProducto.ACTIVO && estado != EstadoProducto.RECHAZADO) {
+            throw new IllegalArgumentException("Indica si la publicación es apta o no apta.");
         }
         Producto producto = productos.bloquear(id).orElseThrow();
-        if(producto.getReservaPago()!=null)throw new IllegalStateException("Usa la operación de custodia para intervenir esta reserva");
-        producto.setEstado(estado);
+        if (producto.getReservaPago() != null || producto.getEstado() == EstadoProducto.VENDIDO) {
+            throw new IllegalStateException("La publicación ya está reservada o vendida.");
+        }
+        if (estado == EstadoProducto.ACTIVO) {
+            if (producto.getEstado() != EstadoProducto.ACTIVO
+                    && !Boolean.FALSE.equals(producto.getRevisionApta())) {
+                throw new IllegalStateException("La publicación no está disponible para revisión.");
+            }
+            producto.setRevisionApta(true);
+            producto.setMotivoRechazo(null);
+        } else {
+            if (producto.getEstado() != EstadoProducto.ACTIVO) {
+                throw new IllegalStateException("Solo se pueden retirar por moderación publicaciones activas.");
+            }
+            if (motivoRechazo == null || motivoRechazo.isBlank()) {
+                throw new IllegalArgumentException("Indica el motivo del retiro.");
+            }
+            producto.setEstado(EstadoProducto.RECHAZADO);
+            producto.setRevisionApta(false);
+            producto.setMotivoRechazo(motivoRechazo.trim());
+        }
         return productos.save(producto);
     }
 
     @Transactional
     public ImagenProducto agregarImagen(Long productoId, ImagenRequest request) {
         Producto producto = buscarPorId(productoId);
+        if(producto.getInventarioId()!=null) throw new IllegalStateException("Las imágenes del inventario proceden de Steam.");
         // Además del tipo declarado, se revisan el tamaño y los primeros bytes del archivo.
         String url=request.urlImagen();
         if (!url.matches("data:image/(png|jpeg);base64,[A-Za-z0-9+/=]+"))
@@ -211,6 +266,7 @@ public class CatalogoService {
     @Transactional
     public void quitarImagen(Long productoId, Long imagenId) {
         var imagen=imagenes.findById(imagenId).orElseThrow();
+        if(imagen.getProducto().getInventarioId()!=null) throw new IllegalStateException("Las imágenes del inventario proceden de Steam.");
         if(!productoId.equals(imagen.getProducto().getId()))throw new IllegalArgumentException("Imagen ajena");
         imagenes.delete(imagen);
     }
@@ -220,11 +276,12 @@ public class CatalogoService {
         if (!imagenes.existsById(imagenId)) {
             throw new EntityNotFoundException("Imagen no encontrada: " + imagenId);
         }
+        if(imagenes.findById(imagenId).orElseThrow().getProducto().getInventarioId()!=null) throw new IllegalStateException("Las imágenes del inventario proceden de Steam.");
         imagenes.deleteById(imagenId);
     }
 
     @Transactional
-    public void eliminarProducto(Long id, String motivo) {
+    public void eliminarProducto(Long id, String motivo, boolean porModeracion) {
         Producto producto = productos.bloquear(id).orElseThrow(() -> new EntityNotFoundException("Publicación inexistente"));
         if (producto.getReservaPago() != null || (producto.getEstado() != EstadoProducto.ACTIVO
             && producto.getEstado() != EstadoProducto.PENDIENTE_APROBACION)) {
@@ -232,7 +289,133 @@ public class CatalogoService {
         }
         String razon = motivo == null || motivo.isBlank() ? "Retirada del catálogo" : motivo.trim();
         producto.setMotivoRechazo(razon);
+        if (porModeracion) producto.setRevisionApta(false);
         producto.setEstado(EstadoProducto.ELIMINADO);
         productos.save(producto);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EstadoPublicacionInventario> estadosDeInventario(String usuarioId) {
+        Map<Long, Producto> publicaciones = new LinkedHashMap<>();
+        for (Producto p : productos.findByVendedorIdAndInventarioIdIsNotNullOrderById(usuarioId)) {
+            publicaciones.merge(p.getInventarioId(), p,
+                    (anterior, reciente) -> anterior.permiteRepublicar() ? reciente : anterior);
+        }
+        return publicaciones.values().stream()
+                .map(p -> {
+                    String estado = p.getReservaPago() != null && p.getEstado() != EstadoProducto.VENDIDO
+                            ? "RESERVADO" : p.getEstado().name();
+                    return new EstadoPublicacionInventario(p.getInventarioId(), p.getId(), estado, p.permiteRepublicar());
+                })
+                .toList();
+    }
+
+    @Transactional
+    public void actualizarDisponibilidadInventario(String usuarioId, Set<Long> disponibles) {
+        for (Producto p : productos.bloquearPublicaciones(usuarioId)) {
+            if (p.getReservaPago() != null) continue;
+            if (!disponibles.contains(p.getInventarioId())
+                    && (p.getEstado() == EstadoProducto.ACTIVO
+                            || p.getEstado() == EstadoProducto.PENDIENTE_APROBACION)) {
+                p.setEstado(EstadoProducto.INACTIVO);
+                p.setMotivoRechazo(NO_DISPONIBLE);
+            } else if (disponibles.contains(p.getInventarioId())
+                    && p.getEstado() == EstadoProducto.INACTIVO
+                    && p.getCategoria().isEstadoHabilitada()
+                    && !Boolean.FALSE.equals(p.getRevisionApta())
+                    && NO_DISPONIBLE.equals(p.getMotivoRechazo())) {
+                p.setEstado(EstadoProducto.ACTIVO);
+                p.setMotivoRechazo(null);
+            }
+        }
+    }
+
+    private void verificarDisponibleParaCompra(Producto producto) {
+        if (producto.getEstado() != EstadoProducto.ACTIVO || producto.getReservaPago() != null) {
+            throw new IllegalStateException("Skin no disponible");
+        }
+        if (producto.getInventarioId() != null) {
+            inventario.verificarDisponible(producto.getVendedorId(), producto.getInventarioId());
+        }
+    }
+
+    @Transactional
+    public Producto publicarDesdeInventario(InventarioAuth.Cuenta cuenta, Long itemId, BigDecimal precio) {
+        if (!cuenta.verificado()) {
+            throw new IllegalStateException(
+                    "Tu cuenta debe ser verificada por administración antes de publicar.");
+        }
+        var item = inventario.verificarDisponible(cuenta.id(), itemId);
+        if (productos.existsByInventarioOcupadoId(itemId)) {
+            throw new IllegalStateException("El ítem no está disponible para publicar.");
+        }
+        Producto origen = item.productoOrigenId() == null
+                ? null
+                : productos.findById(item.productoOrigenId())
+                        .filter(p -> itemId.equals(p.getInventarioId()) && cuenta.id().equals(p.getVendedorId()))
+                        .orElseThrow(() -> new IllegalStateException("El traslado de este ítem sigue en curso."));
+        Categoria categoria = origen == null ? categoriaPara(item.tipo()) : origen.getCategoria();
+        if (!categoria.isEstadoHabilitada()) {
+            throw new IllegalStateException("La categoría de este ítem no está habilitada.");
+        }
+        var p = new Producto();
+        p.setCategoria(categoria);
+        p.setNombre(item.nombre());
+        p.setVendedorId(cuenta.id());
+        p.setVendedor(cuenta.username());
+        p.setTipo(item.tipo());
+        p.setGrado(item.grado());
+        p.setDesgaste(item.desgaste());
+        p.setStattrak(item.stattrak());
+        p.setPrecio(precio);
+        p.setEstado(EstadoProducto.ACTIVO);
+        p.setInventarioId(item.id());
+        p.setDemo(item.demo());
+        p.setDescripcion(
+                item.demo()
+                        ? "Ítem de prueba del inventario de demostración."
+                        : "Ítem importado del inventario de Steam.");
+        if (origen != null) {
+            p.setFloatValor(origen.getFloatValor());
+            p.setUrlIntercambio(origen.getUrlIntercambio());
+            origen.getImagenes().forEach(imagen -> agregarImagenDeInventario(p, imagen.getUrlImagen(), imagen.isEsPrincipal()));
+        }
+        if (p.getImagenes().isEmpty() && item.imagen() != null) {
+            agregarImagenDeInventario(p, item.imagen(), true);
+        }
+        try {
+            return productos.saveAndFlush(p);
+        } catch (DataIntegrityViolationException e) {
+            if (e.getCause() instanceof ConstraintViolationException conflicto
+                    && conflicto.getKind() == ConstraintViolationException.ConstraintKind.UNIQUE) {
+                throw new IllegalStateException("El ítem no está disponible para publicar.", e);
+            }
+            throw e;
+        }
+    }
+
+    private void agregarImagenDeInventario(Producto producto, String url, boolean principal) {
+        var imagen = new ImagenProducto();
+        imagen.setProducto(producto);
+        imagen.setUrlImagen(url);
+        imagen.setEsPrincipal(principal);
+        producto.getImagenes().add(imagen);
+    }
+
+    private Categoria categoriaPara(String tipo) {
+        String categoriaNombre =
+                switch (tipo) {
+                    case "rifle" -> "Rifles";
+                    case "francotirador" -> "Rifles de francotirador";
+                    case "pistola" -> "Pistolas";
+                    case "subfusil" -> "Subfusiles";
+                    case "escopeta" -> "Escopetas";
+                    case "ametralladora" -> "Ametralladoras";
+                    case "cuchillo" -> "Cuchillos";
+                    case "guantes" -> "Guantes";
+                    default -> "Stickers";
+                };
+        return categorias.findByNombreIgnoreCase(categoriaNombre)
+                .orElseThrow(() -> new IllegalStateException("La categoría de este ítem no está habilitada."));
     }
 }

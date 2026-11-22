@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;import static org.mockito.Mocki
 class CustodiaIntegrationTest {
  @Autowired CustodiaMigracion migracion;
  @Autowired cl.skinspad.pago.config.CustodiaSeed seed;
- @Autowired CustodiaCheckout checkout;@Autowired CustodiaService service;@Autowired CustodiaTransactions tx;@Autowired OperacionRepository ops;@Autowired PagoRepository pagos;@Autowired AsientoRepository ledger;@Autowired EventoRepository eventos;@Autowired CustodiaJob job;
+ @Autowired CustodiaCheckout checkout;@Autowired CustodiaService service;@Autowired OperacionRepository ops;@Autowired PagoRepository pagos;@Autowired AsientoRepository ledger;@Autowired EventoRepository eventos;@Autowired CustodiaJob job;
  @Autowired org.springframework.test.web.servlet.MockMvc mvc;
  @Autowired cl.skinspad.pago.stats.StatsService stats;
  @MockitoBean cl.skinspad.pago.stats.StatsUserClient sessions;
@@ -17,7 +17,7 @@ class CustodiaIntegrationTest {
  final Map<String,Long> abonos=new ConcurrentHashMap<>();final Map<String,Long> debitos=new ConcurrentHashMap<>();
  @BeforeEach void limpiar(){eventos.deleteAll();ledger.deleteAll();ops.deleteAll();pagos.deleteAll();abonos.clear();debitos.clear();
  when(users.buscar(anyString())).thenAnswer(x->new UsuarioRemoto(x.getArgument(0),BigDecimal.valueOf(100000),false));
- when(catalog.reservar(any())).thenAnswer(x->{CatalogoPagoClient.Reserva r=x.getArgument(0);return r.ids().stream().map(id->new CatalogoPagoClient.Skin(id,"seller",BigDecimal.valueOf(1000),"Skin "+id)).toList();});
+ when(catalog.reservar(any())).thenAnswer(x->{CatalogoPagoClient.Reserva r=x.getArgument(0);return r.ids().stream().map(id->new CatalogoPagoClient.Skin(id,"seller",BigDecimal.valueOf(1000),"Skin "+id,id>=100)).toList();});
  doAnswer(x->{abonos.putIfAbsent(x.getArgument(2),((BigDecimal)x.getArgument(1)).longValueExact());return null;}).when(users).abonar(anyString(),any(),anyString());
  doAnswer(x->{debitos.putIfAbsent(x.getArgument(2),((BigDecimal)x.getArgument(1)).longValueExact());return null;}).when(users).debitar(anyString(),any(),anyString());
  }
@@ -51,7 +51,24 @@ class CustodiaIntegrationTest {
   var o=nueva();var antes=stats.get("Bearer admin",null,null,false,null,null);assertEquals(0,antes.current().gross());assertEquals(1050,antes.custody().stream().filter(g->g.key().equals("EN_CUSTODIA")).findFirst().orElseThrow().amount());
   entregar(o);action(o,RECIBIR,"buyer");var despues=stats.get("Bearer admin",null,null,false,null,null);assertEquals(1050,despues.current().gross());assertEquals(50,despues.current().commission());assertEquals(1,despues.current().units());assertEquals(despues.current().units(),despues.categories().stream().mapToLong(g->g.count()).sum());
  }
- @Test void pendienteExternoVenceSinAbono(){var p=checkout.iniciar("buyer",new CheckoutRequest("pendiente-expira",List.of(1L),MetodoPago.MERCADO_PAGO));var o=ops.findByPagoIdOrderById(p.getId()).get(0);vencer(o);assertEquals(CANCELADA,estado(o));assertTrue(abonos.isEmpty());assertTrue(debitos.isEmpty());}
+ @Test void pendienteExternoAnteriorVenceSinAbono() {
+  var p = historico(EstadoPago.PENDIENTE, false);
+  p.setMetodo(MetodoPago.MERCADO_PAGO);
+  p.getPrecios().put(2L, BigDecimal.valueOf(1000));
+  p.setMontoTotal(BigDecimal.valueOf(2100));
+  pagos.saveAndFlush(p);
+  seed.run();
+  service.pago(p.getId());
+  var operaciones = ops.findByPagoIdOrderById(p.getId());
+  assertEquals(2, operaciones.size());
+  assertTrue(operaciones.stream().allMatch(o -> o.getEstado() == PAGO_PENDIENTE));
+  assertThrows(org.springframework.web.server.ResponseStatusException.class,
+      () -> action(operaciones.get(0), CANCELAR, "admin"));
+  operaciones.forEach(this::vencer);
+  assertTrue(operaciones.stream().allMatch(o -> estado(o) == CANCELADA));
+  assertTrue(abonos.isEmpty());
+  assertTrue(debitos.isEmpty());
+ }
  @Test void felizSoloLiberaTrasRecepcion(){var o=nueva();assertEquals(PAGO_RETENIDO,estado(o));assertTrue(abonos.isEmpty());assertEquals(1050,debitos.values().stream().mapToLong(Long::longValue).sum());entregar(o);action(o,RECIBIR,"buyer");assertEquals(COMPLETADA,estado(o));assertEquals(1000,abonos.values().stream().mapToLong(Long::longValue).sum());assertEquals(3,ledger.count());}
  @Test void vendedorRechaza(){var o=nueva();action(o,RECHAZAR,"seller");assertEquals(REEMBOLSADA,estado(o));assertEquals(1050,abonos.values().stream().mapToLong(Long::longValue).sum());}
  @Test void vendedorNoResponde(){var o=nueva();vencer(o);assertEquals(REEMBOLSADA,estado(o));}
@@ -66,5 +83,35 @@ class CustodiaIntegrationTest {
  @Test void dobleReembolso()throws Exception{var o=nueva();paralelo(()->action(o,RECHAZAR,"seller"));assertEquals(1,abonos.size());assertEquals(2,ledger.count());}
  @Test void recuperaAbonoConfirmadoConRespuestaPerdida(){var o=nueva();entregar(o);var once=new java.util.concurrent.atomic.AtomicBoolean();doAnswer(x->{abonos.putIfAbsent(x.getArgument(2),((BigDecimal)x.getArgument(1)).longValueExact());if(!once.getAndSet(true))throw new IllegalStateException("respuesta perdida");return null;}).when(users).abonar(anyString(),any(),anyString());action(o,RECIBIR,"buyer");assertEquals(ENTREGADA,estado(o));assertNotNull(ops.findById(o.getId()).orElseThrow().getAccionPendiente());assertThrows(IllegalStateException.class,()->action(o,DISPUTAR,"buyer"));job.ejecutar();assertEquals(COMPLETADA,estado(o));assertEquals(1,abonos.size());assertEquals(3,ledger.count());}
  @Test void comisionSeDistribuyeSinPerderPesos(){var p=checkout.iniciar("buyer",new CheckoutRequest("multi",List.of(1L,2L),MetodoPago.SALDO));var lista=ops.findByPagoIdOrderById(p.getId());assertEquals(p.getMontoTotal().longValueExact(),lista.stream().mapToLong(o->o.getPrecio()+o.getComision()).sum());assertEquals(1,debitos.size());}
- @Test void pagoExternoSeRetieneSinLiberar(){var p=checkout.iniciar("buyer",new CheckoutRequest("externo",List.of(1L),MetodoPago.MERCADO_PAGO));assertTrue(debitos.isEmpty());tx.verificarAdministrativamente(p.getId(),"admin","Comprobado en proveedor");service.pago(p.getId());assertEquals(PAGO_RETENIDO,ops.findByPagoIdOrderById(p.getId()).get(0).getEstado());assertTrue(abonos.isEmpty());}
+ @Test void pagosSimuladosPasanDirectamenteAlVendedorSinMovimientosDeSaldo() {
+  for (var metodo : List.of(MetodoPago.TARJETA, MetodoPago.TRANSFERENCIA, MetodoPago.MERCADO_PAGO)) {
+   var p = checkout.iniciar("buyer", new CheckoutRequest("demo-" + metodo, List.of(100L), metodo));
+   assertTrue(p.getSimulado());
+   assertEquals(EstadoPago.APROBADO, p.getEstado());
+   var o = ops.findByPagoIdOrderById(p.getId()).get(0);
+   assertEquals(PAGO_RETENIDO, o.getEstado());
+   assertFalse(o.isRetenido());
+
+   if (metodo == MetodoPago.TRANSFERENCIA) {
+    action(o, RECHAZAR, "seller");
+    assertEquals(REEMBOLSADA, estado(o));
+   } else {
+    entregar(o);
+    action(o, RECIBIR, "buyer");
+    assertEquals(COMPLETADA, estado(o));
+   }
+  }
+  assertEquals(0, ledger.count());
+  assertTrue(abonos.isEmpty());
+  assertTrue(debitos.isEmpty());
+  assertTrue(ops.findVentasLiquidadasDeVendedor("seller").isEmpty());
+  assertTrue(ops.findByEstadoAndCompletadaGreaterThanEqual(COMPLETADA, Instant.now().minusSeconds(600)).isEmpty());
+ }
+
+ @Test void unPagoSimuladoNoPuedeReservarSkinsRealesInclusoEnUnCarritoMixto() {
+  var compra = new CheckoutRequest("mezclada", List.of(1L, 100L), MetodoPago.MERCADO_PAGO);
+  assertThrows(IllegalStateException.class, () -> checkout.iniciar("buyer", compra));
+  verify(catalog, never()).reservar(argThat(r -> "RESERVAR".equals(r.accion())));
+  assertEquals(0, pagos.count());
+ }
 }

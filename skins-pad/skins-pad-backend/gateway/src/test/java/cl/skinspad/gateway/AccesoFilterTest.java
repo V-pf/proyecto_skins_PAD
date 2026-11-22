@@ -14,7 +14,12 @@ class AccesoFilterTest {
             null, ruta, metodo, Map.of("id", "u1", "rol", rol, "username", "cuenta"), Map.of(), "token");
         return Boolean.TRUE.equals(resultado.block());
     }
-    @Test void verificarPagoSoloAdminYPost(){assertTrue(permite("/api/operaciones/pagos/1/verificar","POST","admin"));assertFalse(permite("/api/operaciones/pagos/1/verificar","POST","cliente"));assertFalse(permite("/api/operaciones/pagos/1/verificar","GET","admin"));}
+    @Test void clienteYAdminNoPuedenVerificarPagos() {
+        for (String rol : java.util.List.of("admin", "cliente")) {
+            assertFalse(permite("/api/operaciones/pagos/1/verificar", "POST", rol));
+            assertFalse(permite("/api/pagos/1/comprobante/verificar", "POST", rol));
+        }
+    }
     @Test void estadisticasSoloPermiteGetAdministrativo() {
         assertTrue(permite("/api/admin/stats", "GET", "admin"));
         assertFalse(permite("/api/admin/stats", "GET", "cliente"));

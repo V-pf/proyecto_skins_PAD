@@ -1,21 +1,13 @@
 import { useOperacion } from "../lib/useOperacion";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import MenuCuenta from "../components/MenuCuenta";
 import Migas from "../components/Migas";
 import Modal from "../components/Modal";
 import { useAuth } from "../context/AuthContext";
 import { useCarrito } from "../context/CarritoContext";
 import { useTienda } from "../context/TiendaContext";
-import { DESGASTES, imagenDe } from "../lib/catalogos";
+import { DESGASTES, imagenDe, METODOS_PAGO } from "../lib/catalogos";
 import { formatoCLP, hoyISO } from "../lib/formato";
-
-const METODOS = [
-  { valor: "Tarjeta", etiqueta: "Tarjeta de Crédito / Débito" },
-  { valor: "Transferencia", etiqueta: "Transferencia Bancaria" },
-  { valor: "Mercado Pago", etiqueta: "Mercado Pago / Wallet" },
-  { valor: "Saldo", etiqueta: "Saldo en la billetera Skins PAD" },
-];
 
 export default function Carrito() {
   const { ejecutar, ocupado } = useOperacion();
@@ -25,8 +17,11 @@ export default function Carrito() {
     useCarrito();
   const navigate = useNavigate();
   const [modalAbierto, setModalAbierto] = useState(false);
-  const [metodo, setMetodo] = useState("Tarjeta");
+  const [metodo, setMetodo] = useState("Saldo");
   const [error, setError] = useState("");
+  const admiteSimulacion = lineas.length > 0 && lineas.every(({ producto }) => producto.demo === true);
+  const metodos = admiteSimulacion ? [...METODOS_PAGO.saldo, ...METODOS_PAGO.simulados] : METODOS_PAGO.saldo;
+  const metodoSeleccionado = admiteSimulacion ? metodo : "Saldo";
 
   // Si falta la sesión, se recuerda el carrito para volver después de entrar.
   function irAPagar() {
@@ -42,7 +37,7 @@ export default function Carrito() {
     void ejecutar(async () => {
       if (!usuario || lineas.length === 0) return;
       // El total del carrito sirve para avisar de saldo insuficiente antes de enviar la compra.
-      if (metodo === "Saldo") {
+      if (metodoSeleccionado === "Saldo") {
         if (usuario.saldo < totales.total) {
           setError(
             `Tu saldo (${formatoCLP(usuario.saldo)}) no alcanza para pagar ${formatoCLP(totales.total)}.`,
@@ -53,7 +48,7 @@ export default function Carrito() {
       // Primero se registra el pago. Si luego falla el vaciado, se avisa que el pago ya quedó registrado.
       const pago = await pagar(
         lineas.map((l) => l.producto.id),
-        metodo,
+        metodoSeleccionado,
       );
       try {
         await vaciar();
@@ -64,14 +59,24 @@ export default function Carrito() {
       }
       setModalAbierto(false);
       navigate("/cliente/compras", {
-        state: { mensaje: "Pago #" + pago.id + " registrado: " + pago.estado },
+        state: { mensaje: pago.estado === "PENDIENTE"
+          ? `El pago #${pago.id} sigue procesándose.`
+          : `Compra #${pago.id} registrada. Ya está disponible para el vendedor.` },
       });
     });
   }
 
   if (usuario && (cargando || cargaTienda.productos)) return <p className="container py-4">Cargando carrito…</p>;
-  const contenido = (
-    <>
+  return (
+    <div className="container py-4">
+      <Migas
+        items={[
+          { texto: "Inicio", a: "/" },
+          ...(usuario ? [{ texto: "Mi cuenta", a: "/cliente/panel" }] : []),
+          { texto: "Carrito" },
+        ]}
+      />
+      <h1 className="mb-4">Carrito</h1>
       {lineas.some((l) => l.producto.estado !== "activa") && (
         <p className="alert alert-warning">
           Quita las skins que ya no están disponibles para continuar.
@@ -183,28 +188,6 @@ export default function Carrito() {
           </div>
         </>
       )}
-    </>
-  );
-
-  return (
-    <div className="container py-4">
-      <Migas
-        items={[
-          { texto: "Inicio", a: "/" },
-          ...(usuario ? [{ texto: "Mi cuenta", a: "/cliente/panel" }] : []),
-          { texto: "Carrito" },
-        ]}
-      />
-      <h1 className="mb-4">Carrito</h1>
-      {usuario ? (
-        <div className="row g-4">
-          <MenuCuenta tipo="cliente" activo="/cliente/carrito" />
-          <div className="col-lg-9">{contenido}</div>
-        </div>
-      ) : (
-        contenido
-      )}
-
       <Modal
         abierto={modalAbierto}
         titulo="Selecciona tu método de pago"
@@ -222,6 +205,7 @@ export default function Carrito() {
               type="button"
               className="btn btn-success"
               onClick={confirmarPago}
+              disabled={ocupado || lineas.length === 0}
             >
               Pagar y finalizar
             </button>
@@ -234,14 +218,14 @@ export default function Carrito() {
           </div>
         )}
         <p className="fw-bold mb-2">Método de pago:</p>
-        {METODOS.map((m) => (
+        {metodos.map((m) => (
           <div className="form-check mb-2" key={m.valor}>
             <input
               className="form-check-input"
               type="radio"
               name="metodoPago"
               id={`metodo-${m.valor}`}
-              checked={metodo === m.valor}
+              checked={metodoSeleccionado === m.valor}
               onChange={() => setMetodo(m.valor)}
             />
             <label className="form-check-label" htmlFor={`metodo-${m.valor}`}>

@@ -43,42 +43,44 @@ class ModeracionPublicacionesTest {
         properties.add("USUARIO_URL",()->"http://127.0.0.1:"+usuarios.getAddress().getPort());
     }
     @AfterAll static void cerrarUsuarios() {usuarios.stop(0);}
-    Producto pendiente(boolean importada) {
+    Producto activa(boolean importada) {
         var p=new Producto();p.setNombre("AK-47 | Redline");p.setVendedorId("vendedor");p.setVendedor("Vendedor");
         p.setCategoria(categorias.findAll().get(0));p.setPrecio(BigDecimal.valueOf(1000));
-        p.setEstado(EstadoProducto.PENDIENTE_APROBACION);p.setMotivoRechazo("Motivo anterior");
+        p.setEstado(EstadoProducto.ACTIVO);
         if(importada)p.setInventarioId(123456L);
         return productos.saveAndFlush(p);
     }
-    @Test void adminApruebaPublicacionesAnterioresYDeInventario() throws Exception {
+    @Test void adminMarcaComoAptaUnaPublicacionYaActiva() throws Exception {
         for(boolean importada: new boolean[]{false,true}) {
-            var p=pendiente(importada);
+            var p=activa(importada);
             mvc.perform(patch("/api/productos/"+p.getId()+"/estado").header("Authorization","Bearer admin")
                 .contentType("application/json").content("{\"estado\":\"ACTIVO\"}"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("ACTIVO"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("ACTIVO"))
+                .andExpect(jsonPath("$.revisionApta").value(true));
             var guardada=productos.findById(p.getId()).orElseThrow();
             assertNull(guardada.getMotivoRechazo());assertEquals("vendedor",guardada.getVendedorId());
             assertEquals(p.getInventarioId(),guardada.getInventarioId());
         }
     }
-    @Test void adminRechazaYGuardaMotivo() throws Exception {
-        var p=pendiente(false);
+    @Test void adminRetiraUnaPublicacionNoAptaConMotivo() throws Exception {
+        var p=activa(false);
         mvc.perform(patch("/api/productos/"+p.getId()+"/estado").header("Authorization","Bearer admin")
             .contentType("application/json").content("{\"estado\":\"RECHAZADO\",\"motivoRechazo\":\"Precio incorrecto\"}"))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("RECHAZADO"))
+            .andExpect(jsonPath("$.revisionApta").value(false));
         assertEquals("Precio incorrecto",productos.findById(p.getId()).orElseThrow().getMotivoRechazo());
     }
-    @Test void clienteNoPuedeAprobarSuPropiaPublicacion() throws Exception {
-        var p=pendiente(false);
+    @Test void clienteNoPuedeModerarSuPropiaPublicacion() throws Exception {
+        var p=activa(false);
         mvc.perform(patch("/api/productos/"+p.getId()+"/estado").header("Authorization","Bearer cliente")
             .contentType("application/json").content("{\"estado\":\"ACTIVO\"}"))
             .andExpect(status().isForbidden());
-        assertEquals(EstadoProducto.PENDIENTE_APROBACION,productos.findById(p.getId()).orElseThrow().getEstado());
+        assertNull(productos.findById(p.getId()).orElseThrow().getRevisionApta());
     }
-    @Test void unaPublicacionReservadaNoSePuedeAprobar() throws Exception {
-        var p=pendiente(false);p.setReservaPago("pago-1");productos.saveAndFlush(p);
+    @Test void unaPublicacionReservadaNoSePuedeRetirar() throws Exception {
+        var p=activa(false);p.setReservaPago("pago-1");productos.saveAndFlush(p);
         mvc.perform(patch("/api/productos/"+p.getId()+"/estado").header("Authorization","Bearer admin")
-            .contentType("application/json").content("{\"estado\":\"ACTIVO\"}"))
+            .contentType("application/json").content("{\"estado\":\"RECHAZADO\",\"motivoRechazo\":\"Precio incorrecto\"}"))
             .andExpect(status().isConflict());
     }
 }
