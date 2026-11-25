@@ -28,3 +28,11 @@ export function limpiarSesion(): void {
     // ignorar
   }
 }
+
+export function reemplazarToken(actual: string, nuevo: string): boolean {
+  if (leerSesion() !== actual) return false;
+  const clave = PREFIJO + "sesion";
+  const destino = sessionStorage.getItem(clave) === actual ? sessionStorage : localStorage;
+  destino.setItem(clave, nuevo);
+  return true;
+}

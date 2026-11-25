@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 public interface StatsUserClient {
   record Identity(String id, String rol, boolean suspendido) {}
   record PublicUser(String id, String rol) {}
-  @GetMapping("/api/auth/validar") Identity validate(@RequestParam("token") String token);
+  default Identity validate(String token) { return validarBearer("Bearer " + token); }
+  @GetMapping("/api/auth/validar") Identity validarBearer(@RequestHeader("Authorization") String bearer);
   @GetMapping("/api/usuarios/publicos") List<PublicUser> users();
 }

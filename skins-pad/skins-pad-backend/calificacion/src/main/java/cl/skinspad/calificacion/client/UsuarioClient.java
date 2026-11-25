@@ -4,5 +4,6 @@ import org.springframework.web.bind.annotation.*;
 @FeignClient(name="usuarios", url="${services.usuario-url}")
 public interface UsuarioClient {
     record Identidad(String id, String rol, boolean suspendido) {}
-    @GetMapping("/api/auth/validar") Identidad validar(@RequestParam("token") String token);
+    default Identidad validar(String token) { return validarBearer("Bearer " + token); }
+  @GetMapping("/api/auth/validar") Identidad validarBearer(@RequestHeader("Authorization") String bearer);
 }

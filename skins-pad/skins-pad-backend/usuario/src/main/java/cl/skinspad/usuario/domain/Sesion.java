@@ -5,7 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "sesiones")
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
+
 public class Sesion {
 
     @Id
@@ -28,4 +28,13 @@ public class Sesion {
     private LocalDateTime inicio;
 
     private LocalDateTime cierre;
+    private LocalDateTime ultimaRenovacion;
+
+    public Sesion(String token, String usuarioId, LocalDateTime inicio, LocalDateTime cierre) {
+        this.token = token;
+        this.usuarioId = usuarioId;
+        this.inicio = inicio;
+        this.cierre = cierre;
+        this.ultimaRenovacion = inicio;
+    }
 }

@@ -2,12 +2,12 @@ import { solicitar } from "./http";
 import { usuarioUI, type UsuarioAPI } from "../lib/api";
 
 export const authService = {
-  async validar(token: string) {
-    return usuarioUI(await solicitar<UsuarioAPI>("/auth/validar?token=" + encodeURIComponent(token)));
+  async validar() {
+    return usuarioUI(await solicitar<UsuarioAPI>("/auth/validar"));
   },
-  async ingresar(identificador: string, password: string) {
+  async ingresar(identificador: string, password: string, recordar: boolean) {
     const respuesta = await solicitar<{ usuario: UsuarioAPI; token: string }>(
-      "/auth/login", "POST", { identificador, password },
+      "/auth/login?recordar=" + recordar, "POST", { identificador, password },
     );
     return { token: respuesta.token, usuario: usuarioUI(respuesta.usuario) };
   },

@@ -44,7 +44,7 @@ class UsuarioServiceTest {
         when(sesiones.findByTokenAndCierreIsNull("token")).thenReturn(Optional.of(sesion));
         when(usuarios.findById("u1")).thenReturn(Optional.of(usuario));
 
-        Usuario resultado = service.validarToken("token");
+        Usuario resultado = service.usuarioDeSesion("token");
 
         assertEquals("u1", resultado.getId());
     }
@@ -54,7 +54,7 @@ class UsuarioServiceTest {
         Sesion sesion = new Sesion("token", "u1", LocalDateTime.now().plusMinutes(3), null);
         when(sesiones.findByTokenAndCierreIsNull("token")).thenReturn(Optional.of(sesion));
 
-        assertThrows(IllegalArgumentException.class, () -> service.validarToken("token"));
+        assertThrows(IllegalArgumentException.class, () -> service.usuarioDeSesion("token"));
     }
 
     @Test

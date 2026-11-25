@@ -26,7 +26,7 @@ public class InventarioAuth {
       cuenta =
           cliente
               .get()
-              .uri("/api/auth/validar?token={token}", auth.substring(7))
+              .uri("/api/auth/validar").header("Authorization", auth)
               .retrieve()
               .body(Cuenta.class);
     } catch (RestClientResponseException e) {
