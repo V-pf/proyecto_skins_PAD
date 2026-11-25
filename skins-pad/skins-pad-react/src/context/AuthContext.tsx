@@ -8,6 +8,7 @@ import {
 import type { ReactNode } from "react";
 import type { Usuario } from "../types";
 import { ErrorAPI, fallo } from "../lib/api";
+import { mantenerSesionActiva } from "../services/http";
 import { authService } from "../services/auth.service";
 import { guardarSesion, leerSesion, limpiarSesion } from "../lib/storage";
 export interface DatosRegistro {
@@ -46,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUsuario(null);
         return;
       }
-      const u = await authService.validar(token);
+      const u = await authService.validar();
       if (u.suspendido) {
         limpiarSesion();
         setUsuario(null);
@@ -63,6 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => {
     void refrescar();
+    const detenerRenovacion = mantenerSesionActiva();
+    const perdida = () => setUsuario(null);
+    window.addEventListener("skins:sesion-cerrada", perdida);
+    return () => {
+      detenerRenovacion();
+      window.removeEventListener("skins:sesion-cerrada", perdida);
+    };
   }, [refrescar]);
   // La opción «recordar» decide dónde se guarda el token tras iniciar sesión.
   async function ingresar(
@@ -71,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     recordar: boolean,
   ) {
     try {
-      const r = await authService.ingresar(identificador, clave);
+      const r = await authService.ingresar(identificador, clave, recordar);
       guardarSesion(r.token, recordar);
       setUsuario(r.usuario);
       return null;
@@ -95,16 +103,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return fallo(e);
     }
   }
-  // La sesión del navegador se limpia aunque falle la solicitud de cierre.
+  // Ante un fallo de red conserva la sesión para poder reintentar el cierre.
   async function salir() {
     try {
       await authService.salir();
     } catch (e) {
-      window.alert(fallo(e));
-    } finally {
-      limpiarSesion();
-      setUsuario(null);
+      if (!(e instanceof ErrorAPI && [401, 403].includes(e.status))) {
+        window.alert(fallo(e));
+        return;
+      }
     }
+    limpiarSesion();
+    setUsuario(null);
   }
   if (cargando) return <p className="container py-4">Validando sesión…</p>;
   if (error)

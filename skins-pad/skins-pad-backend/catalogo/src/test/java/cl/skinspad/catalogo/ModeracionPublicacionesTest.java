@@ -20,6 +20,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:moderacion;MODE=MySQL;DB_CLOSE_DELAY=-1","spring.datasource.driver-class-name=org.h2.Driver","spring.jpa.hibernate.ddl-auto=create-drop"})
 @AutoConfigureMockMvc
 class ModeracionPublicacionesTest {
+    static final com.nimbusds.jose.jwk.RSAKey clave = crearClave();
+    static com.nimbusds.jose.jwk.RSAKey crearClave() {
+        try { return new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(2048).keyID("test").generate(); }
+        catch (com.nimbusds.jose.JOSEException e) { throw new IllegalStateException(e); }
+    }
+    static String bearer(String id) throws Exception {
+        var claims = new com.nimbusds.jwt.JWTClaimsSet.Builder()
+            .issuer("skins-pad/usuario").audience("skins-pad/api").subject(id).claim("sid", id)
+            .issueTime(new java.util.Date()).expirationTime(new java.util.Date(System.currentTimeMillis()+60000)).build();
+        var jwt = new com.nimbusds.jwt.SignedJWT(new com.nimbusds.jose.JWSHeader.Builder(
+            com.nimbusds.jose.JWSAlgorithm.RS256).keyID("test").build(), claims);
+        jwt.sign(new com.nimbusds.jose.crypto.RSASSASigner(clave));
+        return "Bearer " + jwt.serialize();
+    }
     static final HttpServer usuarios = iniciarUsuarios();
     @Autowired MockMvc mvc;
     @Autowired ProductoRepository productos;
@@ -28,8 +42,16 @@ class ModeracionPublicacionesTest {
     static HttpServer iniciarUsuarios() {
         try {
             var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+            server.createContext("/api/auth/jwks", exchange -> {
+                byte[] bytes = new com.nimbusds.jose.jwk.JWKSet(clave.toPublicJWK()).toString().getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200, bytes.length);
+                exchange.getResponseBody().write(bytes);
+                exchange.close();
+            });
             server.createContext("/api/auth/validar", exchange -> {
-                boolean admin="token=admin".equals(exchange.getRequestURI().getQuery());
+                boolean admin;
+                try { admin = "admin".equals(com.nimbusds.jwt.SignedJWT.parse(exchange.getRequestHeaders().getFirst("Authorization").substring(7)).getJWTClaimsSet().getSubject()); }
+                catch (java.text.ParseException e) { throw new java.io.IOException(e); }
                 String body=admin?"{\"id\":\"admin\",\"rol\":\"admin\",\"suspendido\":false}":"{\"id\":\"vendedor\",\"rol\":\"cliente\",\"suspendido\":false}";
                 byte[] bytes=body.getBytes(StandardCharsets.UTF_8);
                 exchange.getResponseHeaders().set("Content-Type","application/json");
@@ -53,7 +75,7 @@ class ModeracionPublicacionesTest {
     @Test void adminMarcaComoAptaUnaPublicacionYaActiva() throws Exception {
         for(boolean importada: new boolean[]{false,true}) {
             var p=activa(importada);
-            mvc.perform(patch("/api/productos/"+p.getId()+"/estado").header("Authorization","Bearer admin")
+            mvc.perform(patch("/api/productos/"+p.getId()+"/estado").header("Authorization",bearer("admin"))
                 .contentType("application/json").content("{\"estado\":\"ACTIVO\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("ACTIVO"))
                 .andExpect(jsonPath("$.revisionApta").value(true));
@@ -64,7 +86,7 @@ class ModeracionPublicacionesTest {
     }
     @Test void adminRetiraUnaPublicacionNoAptaConMotivo() throws Exception {
         var p=activa(false);
-        mvc.perform(patch("/api/productos/"+p.getId()+"/estado").header("Authorization","Bearer admin")
+        mvc.perform(patch("/api/productos/"+p.getId()+"/estado").header("Authorization",bearer("admin"))
             .contentType("application/json").content("{\"estado\":\"RECHAZADO\",\"motivoRechazo\":\"Precio incorrecto\"}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("RECHAZADO"))
             .andExpect(jsonPath("$.revisionApta").value(false));
@@ -72,14 +94,14 @@ class ModeracionPublicacionesTest {
     }
     @Test void clienteNoPuedeModerarSuPropiaPublicacion() throws Exception {
         var p=activa(false);
-        mvc.perform(patch("/api/productos/"+p.getId()+"/estado").header("Authorization","Bearer cliente")
+        mvc.perform(patch("/api/productos/"+p.getId()+"/estado").header("Authorization",bearer("cliente"))
             .contentType("application/json").content("{\"estado\":\"ACTIVO\"}"))
             .andExpect(status().isForbidden());
         assertNull(productos.findById(p.getId()).orElseThrow().getRevisionApta());
     }
     @Test void unaPublicacionReservadaNoSePuedeRetirar() throws Exception {
         var p=activa(false);p.setReservaPago("pago-1");productos.saveAndFlush(p);
-        mvc.perform(patch("/api/productos/"+p.getId()+"/estado").header("Authorization","Bearer admin")
+        mvc.perform(patch("/api/productos/"+p.getId()+"/estado").header("Authorization",bearer("admin"))
             .contentType("application/json").content("{\"estado\":\"RECHAZADO\",\"motivoRechazo\":\"Precio incorrecto\"}"))
             .andExpect(status().isConflict());
     }
