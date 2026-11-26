@@ -16,7 +16,6 @@ import cl.skinspad.catalogo.repository.CategoriaRepository;
 import cl.skinspad.catalogo.repository.ProductoRepository;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,7 +47,7 @@ class PublicacionInventarioTest {
 
   private void permitir(String usuario, Long id) {
     when(inventario.verificarDisponible(usuario, id)).thenReturn(new InventarioClient.Item(
-        id, "AK-47 | Redline (Field-Tested)", "rifle", "clasificado", "ft", false, null, true, null));
+        id, "AK-47 | Redline (Field-Tested)", "rifle", "clasificado", "ft", false, null, null));
   }
 
   @Test
@@ -71,12 +70,6 @@ class PublicacionInventarioTest {
     assertThrows(IllegalStateException.class,
         () -> catalogo.publicarDesdeInventario(cuenta("demo-a"), 11L, BigDecimal.TEN));
 
-    catalogo.actualizarDisponibilidadInventario("demo-a", Set.of());
-    assertEquals(EstadoProducto.INACTIVO, catalogo.buscarPorId(p.getId()).getEstado());
-    assertThrows(IllegalStateException.class,
-        () -> catalogo.publicarDesdeInventario(cuenta("demo-a"), 11L, BigDecimal.TEN));
-    catalogo.actualizarDisponibilidadInventario("demo-a", Set.of(11L));
-    assertEquals(EstadoProducto.ACTIVO, catalogo.buscarPorId(p.getId()).getEstado());
     assertEquals(1, productos.findByVendedorId("demo-a").size());
   }
 
@@ -106,7 +99,6 @@ class PublicacionInventarioTest {
     var anterior = guardarPublicacionAnterior(EstadoProducto.ELIMINADO, null);
     anterior.setVendedorId(vendedor.id());
     anterior.setInventarioId(itemId);
-    anterior.setTrasladoPendiente(false);
     anterior.setFloatValor(new BigDecimal("0.28740"));
     var portada = new ImagenProducto();
     portada.setProducto(anterior);
@@ -116,7 +108,7 @@ class PublicacionInventarioTest {
     anterior = productos.saveAndFlush(anterior);
     Long anteriorId = anterior.getId();
     when(inventario.verificarDisponible(vendedor.id(), itemId)).thenReturn(new InventarioClient.Item(
-        itemId, anterior.getNombre(), "rifle", "clasificado", "ft", false, null, true, anteriorId));
+        itemId, anterior.getNombre(), "rifle", "clasificado", "ft", false, null, anteriorId));
 
     var nueva = catalogo.publicarDesdeInventario(vendedor, itemId, BigDecimal.valueOf(2000));
     assertNotEquals(anteriorId, nueva.getId());
@@ -233,7 +225,6 @@ class PublicacionInventarioTest {
     producto.setVendedorId("vendedor-historico");
     producto.setEstado(estado);
     producto.setReservaPago(reserva);
-    producto.setTrasladoPendiente(null);
     return productos.saveAndFlush(producto);
   }
 }

@@ -17,16 +17,15 @@ public class HistorialPreciosService {
   @Value("${CATALOGO_URL:http://localhost:8081}")
   private String catalogo;
 
-  public record Producto(Long id, String nombre, Boolean demo, String desgaste, Boolean stattrak) {}
+  public record Producto(Long id, String nombre, String desgaste, Boolean stattrak) {}
 
   public record Punto(LocalDate fecha, double precioMedio, long ventas) {}
 
-  static String nombreMercado(Producto p) {
-    String nombre = p.nombre();
-    if (Boolean.TRUE.equals(p.stattrak()) && !nombre.contains("StatTrak"))
+  static String nombreMercado(String nombre, String desgaste, Boolean stattrak) {
+    if (Boolean.TRUE.equals(stattrak) && !nombre.contains("StatTrak"))
       nombre = "StatTrak™ " + nombre;
     String exterior =
-        switch (p.desgaste() == null ? "na" : p.desgaste()) {
+        switch (desgaste == null ? "na" : desgaste) {
           case "fn" -> "Factory New";
           case "mw" -> "Minimal Wear";
           case "ft" -> "Field-Tested";
@@ -39,15 +38,16 @@ public class HistorialPreciosService {
     return nombre;
   }
 
-  public List<Punto> consultar(String nombre, int dias) {
+  public List<Punto> consultar(String nombre, int dias, String desgaste, Boolean stattrak) {
     if (!Set.of(7, 30, 90).contains(dias) || nombre.isBlank() || nombre.length() > 255)
       throw new IllegalArgumentException("Consulta de precios inválida.");
     var productos =
         RestClient.create(catalogo).get().uri("/api/productos").retrieve().body(Producto[].class);
     if (productos == null) return List.of();
+    String criterio = nombreMercado(nombre, desgaste, stattrak);
     Set<Long> ids =
         Arrays.stream(productos)
-            .filter(p -> nombre.equals(nombreMercado(p)) && !Boolean.TRUE.equals(p.demo()))
+            .filter(p -> criterio.equals(nombreMercado(p.nombre(), p.desgaste(), p.stattrak())))
             .map(Producto::id)
             .collect(Collectors.toSet());
     ZoneId zona = ZoneId.of("America/Santiago");
@@ -57,12 +57,13 @@ public class HistorialPreciosService {
             .findByEstadoAndCompletadaGreaterThanEqual(EstadoOperacion.COMPLETADA, desde)
             .stream()
             .filter(
-                o -> ids.contains(o.getProductoId()) && !o.getCompletada().isAfter(Instant.now()))
+                o -> o.getPrecio() != null && ids.contains(o.getProductoId())
+                    && !o.getCompletada().isAfter(Instant.now()))
             .collect(
                 Collectors.groupingBy(
                     o -> o.getCompletada().atZone(zona).toLocalDate(),
                     TreeMap::new,
-                    Collectors.summarizingLong(Operacion::getPrecio)));
+                    Collectors.summarizingDouble(o -> o.getPrecio().doubleValue())));
     return grupos.entrySet().stream()
         .map(e -> new Punto(e.getKey(), e.getValue().getAverage(), e.getValue().getCount()))
         .toList();

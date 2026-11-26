@@ -14,7 +14,10 @@ public class PrecioMercadoController {
 
   @GetMapping
   public List<HistorialPreciosService.Punto> consultar(
-      @RequestParam String nombre, @RequestParam(defaultValue = "30") int dias) {
-    return service.consultar(nombre, dias);
+      @RequestParam String nombre,
+      @RequestParam(defaultValue = "30") int dias,
+      @RequestParam(required = false) String desgaste,
+      @RequestParam(required = false) Boolean stattrak) {
+    return service.consultar(nombre, dias, desgaste, stattrak);
   }
 }

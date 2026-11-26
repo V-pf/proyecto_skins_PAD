@@ -36,10 +36,7 @@ public class CustodiaTransactions {
    var skins=catalogo.reservar(new CatalogoPagoClient.Reserva(p.getPedidoId(),p.getProductoIds(),"RESERVAR"));
    boolean simulado = Boolean.TRUE.equals(p.getSimulado());
    for(var o:os){var skin=skins.stream().filter(x->x.id().equals(o.getProductoId())).findFirst().orElseThrow();
-     if(!o.getVendedorId().equals(skin.vendedorId()) || o.getPrecio()!=skin.precio().longValueExact())throw new IllegalArgumentException("La cotización cambió");}
-   if (simulado && skins.stream().anyMatch(skin -> !Boolean.TRUE.equals(skin.demo()))) {
-     throw new IllegalArgumentException("La publicación dejó de estar disponible para pagos simulados.");
-   }
+     if(!o.getVendedorId().equals(skin.vendedorId()) || o.precioEnPesos()!=skin.precio().longValueExact())throw new IllegalArgumentException("La cotización cambió");}
    // COBRAR permite recuperar los pagos que ya se habían verificado antes de este cambio.
    if(simulado || etapa.equals("COBRAR") || p.getMetodo()==MetodoPago.SALDO){
      if(p.getMetodo()==MetodoPago.SALDO)usuarios.debitar(p.getUsuarioId(),p.getMontoTotal(),p.getPedidoId());
@@ -50,7 +47,7 @@ public class CustodiaTransactions {
        o.setVence(ahora.plus(Duration.ofHours(aceptarHoras)));
        o.setActualizada(ahora);
        if (!simulado) {
-         asientos.save(new AsientoCustodia(o, "RETENCION", Math.addExact(o.getPrecio(), o.getComision()), p.getUsuarioId()));
+         asientos.save(new AsientoCustodia(o, "RETENCION", Math.addExact(o.precioEnPesos(), o.getComision()), p.getUsuarioId()));
        }
        eventos.save(new EventoOperacion(o, "SISTEMA", "VERIFICAR",
            simulado ? "Pago simulado. Esperando al vendedor." : "Fondos retenidos. Esperando al vendedor."));
@@ -92,14 +89,14 @@ public class CustodiaTransactions {
    if(siguiente==EstadoOperacion.COMPLETADA){
      catalogo.reservar(new CatalogoPagoClient.Reserva(p.getPedidoId(),List.of(o.getProductoId()),"VENDER"));
      if (o.isRetenido()) {
-       usuarios.abonar(o.getVendedorId(), BigDecimal.valueOf(o.getPrecio()), "ESCROW-LIBERAR-" + o.getId());
-       asientos.save(new AsientoCustodia(o, "LIBERACION", o.getPrecio(), actor));
+       usuarios.abonar(o.getVendedorId(), BigDecimal.valueOf(o.precioEnPesos()), "ESCROW-LIBERAR-" + o.getId());
+       asientos.save(new AsientoCustodia(o, "LIBERACION", o.precioEnPesos(), actor));
        asientos.save(new AsientoCustodia(o, "COMISION", o.getComision(), actor));
        o.setRetenido(false);
      }
      o.setCompletada(Instant.now());
    } else if(siguiente==EstadoOperacion.REEMBOLSADA || siguiente==EstadoOperacion.CANCELADA){
-     if(o.isRetenido()){usuarios.abonar(o.getCompradorId(),BigDecimal.valueOf(Math.addExact(o.getPrecio(),o.getComision())),"ESCROW-REEMBOLSO-"+o.getId());asientos.save(new AsientoCustodia(o,"REEMBOLSO",Math.addExact(o.getPrecio(),o.getComision()),actor));o.setRetenido(false);}
+     if(o.isRetenido()){usuarios.abonar(o.getCompradorId(),BigDecimal.valueOf(Math.addExact(o.precioEnPesos(),o.getComision())),"ESCROW-REEMBOLSO-"+o.getId());asientos.save(new AsientoCustodia(o,"REEMBOLSO",Math.addExact(o.precioEnPesos(),o.getComision()),actor));o.setRetenido(false);}
      // DESCARTAR no toca una reserva que ya pertenezca a otra operación.
      catalogo.reservar(new CatalogoPagoClient.Reserva(p.getPedidoId(),List.of(o.getProductoId()),"DESCARTAR"));
      if(a==RECHAZAR)o.setCausa("RECHAZADA_POR_VENDEDOR");else if(a==EXPIRAR)o.setCausa("EXPIRADA");else o.setCausa(a.name());

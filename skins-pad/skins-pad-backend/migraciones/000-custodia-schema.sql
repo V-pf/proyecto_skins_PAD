@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS operaciones (
  id BIGINT PRIMARY KEY AUTO_INCREMENT,version BIGINT NOT NULL DEFAULT 0,
  pago_id BIGINT NOT NULL,producto_id BIGINT NOT NULL,
  comprador_id VARCHAR(80) NOT NULL,vendedor_id VARCHAR(80) NOT NULL,
- nombre VARCHAR(255) NOT NULL,url_intercambio VARCHAR(255),precio BIGINT NOT NULL,
+ nombre VARCHAR(255) NOT NULL,precio BIGINT NOT NULL,
  comision BIGINT NOT NULL,comision_bps INT NOT NULL,paga_comision VARCHAR(255) NOT NULL,
  estado VARCHAR(40) NOT NULL,causa VARCHAR(255),retenido BIT NOT NULL,historica BIT NOT NULL,
  sincronizado BIT NOT NULL,error_sincronizacion VARCHAR(500),

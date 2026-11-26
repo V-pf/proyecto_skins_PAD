@@ -9,7 +9,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -32,20 +31,6 @@ public class InventarioController {
   public InventarioService.Inventario listar(
       @RequestHeader(value = "Authorization", required = false) String token) {
     return inventario.consultar(auth.validar(token).id());
-  }
-
-  @PostMapping("/api/inventario/sincronizar")
-  public InventarioService.Inventario sincronizar(
-      @RequestHeader(value = "Authorization", required = false) String token) {
-    String id = auth.validar(token).id();
-    inventario.sincronizar(id);
-    return inventario.consultar(id);
-  }
-
-  @PostMapping("/interno/inventario/{usuarioId}/sincronizar")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void sincronizarVinculo(@PathVariable String usuarioId) {
-    inventario.sincronizar(usuarioId);
   }
 
   @GetMapping("/interno/inventario/{usuarioId}/items/{itemId}/disponible")

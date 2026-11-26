@@ -18,7 +18,7 @@ interface Tienda {
   recargar: () => Promise<void>;
   actualizarProducto: (id: number, parche: Partial<Producto>) => Promise<void>;
   actualizarUsuario: (id: string, parche: Partial<Usuario>) => Promise<void>;
-  pagar: (ids: number[], metodo: string) => Promise<Pago>;
+  pagar: (ids: number[]) => Promise<Pago>;
 }
 const Ctx = createContext<Tienda | null>(null);
 export function TiendaProvider({ children }: { children: ReactNode }) {
@@ -107,19 +107,13 @@ export function TiendaProvider({ children }: { children: ReactNode }) {
       await listaUsuarios.recargar();
       if (usuario?.id === id) await refrescar();
     },
-    async pagar(ids, metodo) {
-      const metodos: Record<string, string> = {
-        Saldo: "SALDO",
-        Transferencia: "TRANSFERENCIA",
-        Tarjeta: "TARJETA",
-        "Mercado Pago": "MERCADO_PAGO",
-      };
+    async pagar(ids) {
       // Si se reintenta la misma compra, se conserva la referencia para consultar el pago ya iniciado.
-      const firma=JSON.stringify([usuario?.id,ids,metodo]);
+      const firma=JSON.stringify([usuario?.id,ids]);
       if(solicitud.current.firma!==firma)solicitud.current={id:crypto.randomUUID(),firma};
       const pago = await pagoService.pagar({
         productoIds: ids,
-        metodo: metodos[metodo],
+        metodo: "SALDO",
         solicitudId: solicitud.current.id,
       });
       await refrescar();

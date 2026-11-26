@@ -23,7 +23,7 @@ public class InventarioClient {
   }
 
   public record Item(Long id, String nombre, String tipo, String grado, String desgaste,
-      boolean stattrak, String imagen, boolean demo, Long productoOrigenId) {}
+      boolean stattrak, String imagen, Long productoOrigenId) {}
 
   public record Traslado(Long productoOrigenId, Long inventarioId, String nombre, String tipo,
       String grado, String desgaste, boolean stattrak, BigDecimal floatValor, String imagen) {}

@@ -52,7 +52,6 @@ public class UsuarioSeed {
         u.setEmail(email);
         u.setPasswordHash(encoder.encode(pass));
         u.setFechaNacimiento(LocalDate.parse(fecha));
-        u.setLinkSteam("");
         u.setRol(rol);
         u.setSuspendido(suspendido);
         u.setVerificado(verificado);

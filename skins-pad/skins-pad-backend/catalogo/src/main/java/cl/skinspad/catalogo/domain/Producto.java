@@ -48,18 +48,10 @@ public class Producto {
     @com.fasterxml.jackson.annotation.JsonIgnore
     @Column(name = "inventario_id", unique = true)
     private Long inventarioOcupadoId;
-    private Boolean demo = false;
-    // NULL identifica las publicaciones que existían antes del traslado inicial.
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    private Boolean trasladoPendiente = false;
-    // Al liberar una compra anterior al traslado, la skin queda disponible en inventario.
-    @com.fasterxml.jackson.annotation.JsonIgnore
-    private Boolean retiradaParaInventario = false;
     // Guarda la referencia del pago ligado a la reserva o la venta.
     private String reservaPago;
     private Boolean revisionApta;
     @Column(length=500) private String motivoRechazo;
-    @Column(length=500) private String urlIntercambio;
     private String vendedor;
 
     @ManyToOne(optional = false, fetch = FetchType.EAGER)

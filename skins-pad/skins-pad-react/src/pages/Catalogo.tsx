@@ -4,8 +4,10 @@ import ListaProductos from "../components/ListaProductos";
 import Migas from "../components/Migas";
 import { useTienda } from "../context/TiendaContext";
 import { GRADOS, TIPOS } from "../lib/catalogos";
-import { formatoCLP } from "../lib/formato";
+import FiltroRango, { type Rango } from "../components/FiltroRango";
 import type { Grado, Tipo } from "../types";
+
+const RANGO_VACIO: Rango = { min: null, max: null };
 
 type Orden = "relevancia" | "precio-asc" | "precio-desc" | "nombre";
 
@@ -29,8 +31,12 @@ export default function Catalogo() {
     return g && GRADOS.some((x) => x.valor === g) ? [g] : [];
   });
   const [soloStattrak, setSoloStattrak] = useState(false);
-  const [precioMin, setPrecioMin] = useState(0);
-  const [precioMax, setPrecioMax] = useState(0);
+  const [precio, setPrecio] = useState(RANGO_VACIO);
+  const [desgaste, setDesgaste] = useState(RANGO_VACIO);
+  const [reinicioRangos, setReinicioRangos] = useState(0);
+  const mayorPrecio = useMemo(() => productos.reduce(
+    (max, p) => p.estado === "activa" ? Math.max(max, p.precio) : max, 0,
+  ), [productos]);
   const [texto, setTexto] = useState(params.get("q") ?? "");
   const [orden, setOrden] = useState<Orden>("relevancia");
 
@@ -47,13 +53,18 @@ export default function Catalogo() {
   // Aplica los filtros a las publicaciones activas y ordena el resultado según la opción elegida.
   const visibles = useMemo(() => {
     const busqueda = texto.trim().toLowerCase();
+    const filtraFloat = desgaste.min !== null || desgaste.max !== null;
     const lista = productos.filter(
       (p) =>
         p.estado === "activa" && (!categoria || p.categoriaId===Number(categoria)) &&
         (tipos.length === 0 || tipos.includes(p.tipo)) &&
         (grados.length === 0 || grados.includes(p.grado)) &&
         (!soloStattrak || p.stattrak) &&
-        p.precio >= precioMin && (precioMax === 0 || p.precio <= precioMax) &&
+        p.precio >= (precio.min ?? 0) && (precio.max === null || p.precio <= precio.max) &&
+        (!filtraFloat || (p.float !== null && p.float >= (desgaste.min ?? 0) &&
+          (desgaste.desgaste && desgaste.max !== 1
+            ? p.float < desgaste.desgaste.max
+            : p.float <= (desgaste.max ?? 1)))) &&
         (busqueda === "" || (p.nombre + " " + (p.descripcion ?? "")).toLowerCase().includes(busqueda))
     );
     return [...lista].sort((a, b) => {
@@ -62,16 +73,17 @@ export default function Catalogo() {
       if (orden === "nombre") return a.nombre.localeCompare(b.nombre, "es");
       return a.id - b.id;
     });
-  }, [productos, tipos, grados, soloStattrak, precioMin, precioMax, texto, orden,categoria]);
+  }, [productos, tipos, grados, soloStattrak, precio, desgaste, texto, orden,categoria]);
 
-  // Borra la búsqueda, las selecciones y los límites de precio junto con los parámetros de la URL.
+  // Restablece los filtros y los parámetros de la URL.
   function limpiar() {
     setParams({});
     setTipos([]);
     setGrados([]);
     setSoloStattrak(false);
-    setPrecioMin(0);
-    setPrecioMax(0);
+    setPrecio(RANGO_VACIO);
+    setDesgaste(RANGO_VACIO);
+    setReinicioRangos((prev) => prev + 1);
     setTexto("");
   }
 
@@ -135,25 +147,8 @@ export default function Catalogo() {
                 Solo StatTrak™
               </label>
             </div>
-            <div className="mb-1">
-              <label>Precio mínimo (CLP)<input className="form-control mb-3" type="number" min="0" value={precioMin || ""} onChange={e => setPrecioMin(Number(e.target.value))} /></label>
-              <label htmlFor="precio-max" className="form-label">
-                Precio máximo
-              </label>
-              <input
-                type="range"
-                className="form-range"
-                id="precio-max"
-                min={0}
-                max={4000000}
-                step={10000}
-                value={precioMax}
-                onChange={(e) => setPrecioMax(Number(e.target.value))}
-              />
-              <output htmlFor="precio-max" className="small text-body-secondary">
-                {precioMax === 0 ? "Sin límite" : `Hasta ${formatoCLP(precioMax)}`}
-              </output>
-            </div>
+            <FiltroRango key={'precio-' + reinicioRangos} tipo="precio" limite={Math.max(1, mayorPrecio)} rango={precio} cambiar={setPrecio} />
+            <FiltroRango key={'float-' + reinicioRangos} tipo="float" limite={1} rango={desgaste} cambiar={setDesgaste} />
           </form>
           <aside className="mt-4">
             <h2 className="h6">¿Buscas algo específico?</h2>

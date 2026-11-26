@@ -15,10 +15,6 @@ export const REGLAS = {
     test: (v) => /^[A-Za-z0-9_]{3,20}$/.test(v.trim()),
     mensaje: "Entre 3 y 20 caracteres: letras, números o guion bajo, sin espacios.",
   },
-  url_steam: {
-    test: (v) => /^https:\/\/steamcommunity\.com\/(id|profiles|tradeoffer)\/.+/i.test(v.trim()),
-    mensaje: "Debe ser un enlace de steamcommunity.com (perfil o de intercambio).",
-  },
   telefono_cl: {
     test: (v) => /^(\+?56)?\s?9\s?\d{4}\s?\d{4}$/.test(v.trim()),
     mensaje: "Usa el formato +56 9 XXXX XXXX.",

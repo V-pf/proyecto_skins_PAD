@@ -58,7 +58,8 @@ public class AccesoFilter implements GlobalFilter, Ordered {
     // Permite consultar el catálogo y los perfiles públicos, registrarse e iniciar sesión.
     if (m.equals("OPTIONS")
         || (m.equals("GET")
-            && (p.equals("/api/steam/callback") || p.matches("/api/calificaciones/vendedor/[^/]+") || p.startsWith("/api/productos")
+            && (p.matches("/api/calificaciones/vendedor/[^/]+")
+                || p.startsWith("/api/productos")
                 || p.startsWith("/api/categorias")
                 || p.equals("/api/auth/jwks") || p.equals("/api/usuarios/publicos")))
         || (m.equals("POST") && (p.equals("/api/auth/login") || p.equals("/api/auth/renovar") || p.equals("/api/auth/registro"))))
@@ -173,15 +174,14 @@ public class AccesoFilter implements GlobalFilter, Ordered {
     }
     if (p.equals("/api/admin/stats")) return Mono.just(admin && leer);
     if (p.equals("/api/auth/validar"))
-      return Mono.just(leer);
-    if (p.equals("/api/calificaciones") || p.equals("/api/steam/vincular")
-        || p.equals("/api/inventario/sincronizar") || p.equals("/api/inventario/publicaciones")) {
+        return Mono.just(leer);
+    if (p.equals("/api/pagos/mis-ventas")) return Mono.just(leer && !admin);
+    if (p.equals("/api/calificaciones") || p.equals("/api/inventario/publicaciones")) {
       return Mono.just(m.equals("POST") && "cliente".equals(u.get("rol")));
     }
     if (p.equals("/api/inventario") || p.matches("/api/inventario/[0-9]+/precios")) {
       return Mono.just(leer && "cliente".equals(u.get("rol")));
     }
-    if (p.equals("/api/pagos/mis-ventas")) return Mono.just(leer && !admin);
     if (p.equals("/api/auth/logout")) return Mono.just(true);
     if (p.equals("/api/pagos/checkout")) return Mono.just(!admin);
     if (admin && (p.startsWith("/api/carritos") || p.endsWith("/retiros") || p.endsWith("/perfil") || (p.equals("/api/productos") && m.equals("POST")))) return Mono.just(false);

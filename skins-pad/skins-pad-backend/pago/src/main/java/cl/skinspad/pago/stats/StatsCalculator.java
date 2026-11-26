@@ -41,14 +41,15 @@ public final class StatsCalculator {
 
   /** Distribución entera por mayor resto: las partes siempre suman el cobro original. */
   static Map<Long,Long> allocate(Pago p) {
+    var precios=p.getPrecios();
     var ids=p.getProductoIds().stream().distinct().sorted().toList();
-    if(ids.isEmpty() || ids.stream().anyMatch(id->p.getPrecios().get(id)==null)) return Map.of();
-    BigDecimal total=ids.stream().map(id->p.getPrecios().get(id)).reduce(BigDecimal.ZERO,BigDecimal::add);
-    if(total.signum()<=0 || ids.stream().anyMatch(id->p.getPrecios().get(id).signum()<0)) return Map.of();
+    if(ids.isEmpty() || ids.stream().anyMatch(id->precios.get(id)==null)) return Map.of();
+    BigDecimal total=ids.stream().map(precios::get).reduce(BigDecimal.ZERO,BigDecimal::add);
+    if(total.signum()<=0 || ids.stream().anyMatch(id->precios.get(id).signum()<0)) return Map.of();
     long gross=clp(p.getMontoTotal());
     var result=new LinkedHashMap<Long,Long>(); var remainders=new HashMap<Long,BigDecimal>();
     for(Long id:ids) {
-      BigDecimal weighted=p.getPrecios().get(id).multiply(BigDecimal.valueOf(gross));
+      BigDecimal weighted=precios.get(id).multiply(BigDecimal.valueOf(gross));
       long floor=weighted.divide(total,0,RoundingMode.DOWN).longValueExact();
       result.put(id,floor); remainders.put(id,weighted.subtract(total.multiply(BigDecimal.valueOf(floor))));
     }
@@ -62,7 +63,8 @@ public final class StatsCalculator {
     for(Pago p:ps) {
       if(!in(p.getFecha(),from,to) || test(p,products) || (method!=null && !method.equals(p.getMetodo().name())))continue;
       var allocations=allocate(p);
-      var lines=p.getProductoIds().stream().distinct().map(id->new Line(p,id,products.get(id),p.getPrecios().get(id)==null?null:clp(p.getPrecios().get(id)),allocations.get(id)))
+      var lines=p.getOperaciones().stream().map(o->new Line(p,o.getProductoId(),products.get(o.getProductoId()),
+          o.getPrecio()==null?null:clp(o.getPrecio()),allocations.get(o.getProductoId())))
         .filter(l->cat==null || l.product!=null && l.product.categoria()!=null && cat.equals(l.product.categoria().id())).toList();
       if(cat!=null && lines.isEmpty())continue;
       result.add(new Order(p,lines,cat==null?clp(p.getMontoTotal()):sum(lines.stream().map(Line::gross).toList())));

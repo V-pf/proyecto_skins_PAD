@@ -10,8 +10,7 @@ export default function Contacto() {
         única unidad.
       </p>
       <p>
-        En Mi cuenta → Mis pagos puedes revisar el estado de tu pago y registrar
-        un comprobante de transferencia. El intercambio se realiza en Steam.
+        Consulta el estado de tus pagos en Mis pagos y el de tus entregas en Mis compras.
       </p>
     </div>
   );

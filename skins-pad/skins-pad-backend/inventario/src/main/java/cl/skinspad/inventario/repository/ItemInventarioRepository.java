@@ -9,4 +9,6 @@ public interface ItemInventarioRepository extends JpaRepository<ItemInventario, 
   List<ItemInventario> findByUsuarioIdOrderById(String usuarioId);
 
   Optional<ItemInventario> findByUsuarioIdAndAssetId(String usuarioId, String assetId);
+
+  Optional<ItemInventario> findFirstByUsuarioIdAndAssetIdStartingWithOrderById(String usuarioId, String prefijo);
 }

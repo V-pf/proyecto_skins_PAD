@@ -55,7 +55,6 @@ public class UsuarioService {
     usuario.setEmail(email);
     usuario.setPasswordHash(encoder.encode(request.password()));
     usuario.setFechaNacimiento(request.fechaNacimiento());
-    usuario.setLinkSteam(request.linkSteam());
     usuario.setRol(Rol.cliente);
     usuario.setSuspendido(false);
     usuario.setVerificado(false);
@@ -238,7 +237,6 @@ public class UsuarioService {
       throw new IllegalArgumentException("El correo ya está registrado");
     u.setEmail(email);
     u.setNombre(r.nombre().trim());
-    u.setLinkSteam(r.linkSteam());
     return usuarios.save(u);
   }
 

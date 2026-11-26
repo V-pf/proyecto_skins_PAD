@@ -25,6 +25,6 @@ if ($Demo) {
     if (-not $listo) { throw 'El servicio usuario no respondió con cuentas demo. Revisa su consola.' }
 }
 
-foreach ($servicio in @('steam', 'inventario', 'catalogo', 'carrito', 'pago', 'calificacion', 'gateway')) {
+foreach ($servicio in @('inventario', 'catalogo', 'carrito', 'pago', 'calificacion', 'gateway')) {
     $null = Iniciar $servicio
 }

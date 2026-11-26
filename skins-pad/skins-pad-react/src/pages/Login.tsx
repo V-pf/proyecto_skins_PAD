@@ -57,20 +57,12 @@ export default function Login() {
   return (
     <div className="container py-5" style={{ maxWidth: "480px" }}>
       <h1 className="mb-2 text-center">Ingresar</h1>
-      <p className="text-body-secondary text-center mb-4">Usa tu cuenta de Skins PAD, o entra con Steam.</p>
+      <p className="text-body-secondary text-center mb-4">Usa tu cuenta de Skins PAD.</p>
       {desde && (
         <div className="alert alert-secondary" role="status">
           Inicia sesión para continuar.
         </div>
       )}
-      <button type="button" className="btn btn-outline-light w-100 mb-4" disabled title="Botón de ejemplo, sin integración real">
-        Ingresar con Steam
-      </button>
-      <div className="d-flex align-items-center gap-3 mb-4">
-        <hr className="flex-fill linea-divisoria" />
-        <span className="text-body-secondary small">o con tu correo</span>
-        <hr className="flex-fill linea-divisoria" />
-      </div>
       <form onSubmit={enviar} noValidate>
         {errorServidor && (
           <div className="alert alert-danger" role="alert">

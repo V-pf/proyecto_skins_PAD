@@ -1,6 +1,6 @@
 # Skins PAD integrado
 
-React consulta el gateway en el puerto 8090. Usuario usa el 8087, catálogo el 8081, carrito el 8083 y pago el 8084. Cada servicio conserva su estructura Controller–Service–Repository y su base de datos.
+React consulta el gateway en el puerto 8090. Usuario usa el 8087, inventario el 8082, catálogo el 8081, carrito el 8083, pago el 8084 y calificación el 8089. Cada servicio conserva su estructura Controller–Service–Repository y su base de datos.
 
 ## Probar en Windows
 
@@ -13,7 +13,7 @@ Requisitos: Java 17, Maven 3.9, Node.js y npm.
    .\iniciar-servicios.ps1 -Demo
    ```
 
-   Espera el mensaje de arranque en las cinco ventanas. El modo demo usa H2 en disco. Conserva las cuentas, carritos y pagos tras reiniciar.
+   Espera el mensaje de arranque de los servicios. El modo demo usa H2 en disco. Conserva las cuentas, carritos y pagos tras reiniciar.
 3. En otra terminal, dentro de la carpeta del frontend:
 
    ```powershell
@@ -30,7 +30,13 @@ Requisitos: Java 17, Maven 3.9, Node.js y npm.
 
 ## Ejecutar con MySQL
 
-Ejecuta `crear-bases.sql` en MySQL. En PowerShell configura las variables `USUARIO_DB_PASSWORD`, `CATALOGO_DB_PASSWORD`, `CARRITO_DB_PASSWORD` y `PAGO_DB_PASSWORD`. Si usas otro usuario, configura también las correspondientes variables `*_DB_USERNAME`. Ejecuta `.\iniciar-servicios.ps1` sin el parámetro `-Demo`. Los datos de ejemplo se cargan cuando las tablas correspondientes están vacías.
+Ejecuta `crear-bases.sql` en MySQL. En PowerShell configura las variables `USUARIO_DB_PASSWORD`, `INVENTARIO_DB_PASSWORD`, `CATALOGO_DB_PASSWORD`, `CARRITO_DB_PASSWORD`, `PAGO_DB_PASSWORD` y `CALIFICACION_DB_PASSWORD`. Si usas otro usuario, configura también las correspondientes variables `*_DB_USERNAME`. Ejecuta `.\iniciar-servicios.ps1` sin el parámetro `-Demo`. Los datos de ejemplo se cargan cuando las tablas correspondientes están vacías.
+
+Para arrancar desde las clases `Application`, inicia usuario → inventario → catálogo → carrito → pago → calificación → gateway. Para usar soporte, inicia también ticket y reporte antes del gateway.
+
+## Inventario de demostración
+
+Las skins de ejemplo se cargan automáticamente en los inventarios de sus propietarios. En «Mi inventario» se explica que, con una integración de Steam, el usuario vincularía su cuenta para importar sus skins de CS2. La demostración usa los inventarios locales y registra la entrega y la recepción dentro de Skins PAD.
 
 ## Qué pasa en una compra
 
@@ -38,7 +44,7 @@ Ejecuta `crear-bases.sql` en MySQL. En PowerShell configura las variables `USUAR
 - Las skins publicadas desde el inventario aparecen de inmediato en el catálogo. Administración puede revisarlas y retirar una publicación no apta indicando el motivo.
 - El carrito pertenece al usuario. Cada publicación representa una skin única y admite una unidad.
 - Al pagar se envían IDs de productos y método. El backend cotiza con los precios del catálogo y guarda el pago. Valida disponibilidad y toma las skins al confirmar la operación. Una solicitud repetida conserva el pago existente.
-- El pago con saldo se debita de la billetera del comprador y la operación aparece en Mis ventas para el vendedor. El vendedor recibe el abono al completarse la entrega. Tarjeta, transferencia y Mercado Pago son simulaciones disponibles para compras de skins de demostración.
+- Todas las compras se debitan del saldo de la billetera del comprador y aparecen en Mis ventas para el vendedor. El vendedor recibe el abono al completarse la entrega. El historial de precios usa ventas completadas.
 - Si el vendedor rechaza la compra o vence su plazo de entrega, se libera la publicación y se devuelve el saldo retenido al comprador. Si la venta se completa, la skin desaparece del inventario del vendedor.
 - Mis pagos consulta los movimientos del servicio de pagos. El campo original `pedidoId` se conserva como referencia de pago. El sitio excluye la gestión de pedidos y la mensajería.
 
@@ -55,7 +61,7 @@ El servicio usuario conserva los comprobantes de registro y compra en su base de
 ## Probar el circuito de venta
 
 1. Con una cuenta cliente verificada, selecciona una skin en Mi inventario y publícala. Comprueba que aparece en el catálogo.
-2. Con otra cuenta, compra la skin con saldo. En una compra de demostración también puedes elegir un método simulado.
+2. Con otra cuenta, compra la skin con saldo. Las skins precargadas siguen ese mismo flujo.
 3. Desde el menú del vendedor entra a Mis ventas, acepta la operación y marca la entrega. Desde Mis compras, confirma la recepción con la cuenta compradora.
 4. Comprueba que la skin desapareció del inventario del vendedor. Si la compra fue con saldo, revisa el abono en Billetera y retiros.
 5. En Gestión web, Administración puede revisar si una publicación activa es apta. En Gestión de pagos puede consultar el historial e intervenir en disputas.

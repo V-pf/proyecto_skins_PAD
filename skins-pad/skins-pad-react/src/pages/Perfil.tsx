@@ -48,15 +48,6 @@ export default function Perfil() {
               defaultValue={usuario.correo}
             />
           </label>
-          <label className="d-block mb-3">
-            Perfil de Steam
-            <input
-              className="form-control"
-              name="linkSteam"
-              type="url"
-              defaultValue={usuario.urlSteam}
-            />
-          </label>
           <button disabled={ocupado} className="btn btn-primary">
             Guardar cambios
           </button>

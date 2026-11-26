@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import java.time.*;
 import java.util.*;
 import cl.skinspad.pago.domain.*;
+import cl.skinspad.pago.escrow.Operacion;
 import static cl.skinspad.pago.stats.StatsCatalogClient.*;
 
 class StatsCalculatorTest {
@@ -15,7 +16,13 @@ class StatsCalculatorTest {
   }
   Pago pay(long id,EstadoPago state,long gross,long... ids) {
     Pago p=new Pago();p.setId(id);p.setPedidoId("COMPRA-"+id);p.setUsuarioId("buyer");p.setEstado(state);p.setFecha(from.plusDays(2).atTime(13,0));p.setMontoTotal(BigDecimal.valueOf(gross));p.setMetodo(MetodoPago.SALDO);p.setLiquidado(true);
-    for(long productId:ids){p.getProductoIds().add(productId);p.getPrecios().put(productId,BigDecimal.valueOf(100));}return p;
+    for (long productId : ids) {
+      var operacion = new Operacion();
+      operacion.setProductoId(productId);
+      operacion.setPrecio(BigDecimal.valueOf(100));
+      p.agregarOperacion(operacion);
+    }
+    return p;
   }
   StatsDto stats(List<Pago> ps,List<Product> products,Long cat) {
     return StatsCalculator.calculate(ps,products,List.of(new Category(1L,"Rifles"),new Category(2L,"Pistolas")),List.of(new StatsUserClient.PublicUser("buyer","cliente"),new StatsUserClient.PublicUser("seller","cliente")),from,to,true,cat,null,to.atTime(12,0),Map.of());
@@ -44,7 +51,7 @@ class StatsCalculatorTest {
     assertEquals(1,a.current().operations());assertEquals(1,b.current().operations());
   }
   @Test void noInventaComisionSinPrecioHistorico() {
-    var p=pay(1,EstadoPago.APROBADO,105,1);p.getPrecios().clear();var dto=stats(List.of(p),List.of(skin(1,"A",1,"rifle")),null);
+    var p=pay(1,EstadoPago.APROBADO,105,1);p.getOperaciones().get(0).setPrecio(null);var dto=stats(List.of(p),List.of(skin(1,"A",1,"rifle")),null);
     assertEquals(105,dto.current().gross());assertNull(dto.current().net());assertNull(dto.current().commission());
   }
   @Test void conservaSkinsDeCatalogoFaltanteSinPerderUnidades() {
@@ -63,7 +70,7 @@ class StatsCalculatorTest {
     assertEquals(1,dto.current().operations());assertEquals(1,dto.previous().operations());assertEquals("2026-10-18",dto.compareFrom());
   }
   @Test void rankingNormalizaNombreYDesempataPorIngreso() {
-    var p=pay(1,EstadoPago.APROBADO,420,1,2,3);p.getPrecios().put(3L,BigDecimal.valueOf(200));
+    var p=pay(1,EstadoPago.APROBADO,420,1,2,3);p.getOperaciones().get(2).setPrecio(BigDecimal.valueOf(200));
     var dto=stats(List.of(p),List.of(skin(1," AK-47 | Redline ",1,"rifle"),skin(2,"ak-47 | redline",1,"rifle"),skin(3,"USP-S | Cortex",2,"pistola")),null);
     assertEquals(2,dto.skins().size());assertEquals(2,dto.skins().get(0).units());assertEquals(200,dto.skins().get(0).income());
   }

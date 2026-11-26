@@ -19,9 +19,6 @@ export default function Footer() {
                 <Link to="/catalogo">Catálogo</Link>
               </li>
               <li>
-                <Link to="/categorias">Categorías</Link>
-              </li>
-              <li>
                 <Link to="/cliente/inventario">Vender una skin</Link>
               </li>
             </ul>

@@ -1,9 +1,8 @@
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { useLocation, Link, Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import RutaProtegida from "./components/RutaProtegida";
 import Home from "./pages/Home";
 import Catalogo from "./pages/Catalogo";
-import Categorias from "./pages/Categorias";
 import DetalleProducto from "./pages/DetalleProducto";
 import Contacto from "./pages/Contacto";
 import Login from "./pages/Login";
@@ -36,13 +35,18 @@ function NoEncontrada() {
   );
 }
 
+function RedirigirCategorias() {
+  const { search, hash } = useLocation();
+  return <Navigate replace to={{ pathname: "/catalogo", search, hash }} />;
+}
+
 export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route path="/catalogo" element={<Catalogo />} />
-        <Route path="/categorias" element={<Categorias />} />
+        <Route path="/categorias" element={<RedirigirCategorias />} />
         <Route path="/producto/:id" element={<DetalleProducto />} />
         <Route path="/contacto" element={<Contacto />} />
         <Route path="/login" element={<Login />} />

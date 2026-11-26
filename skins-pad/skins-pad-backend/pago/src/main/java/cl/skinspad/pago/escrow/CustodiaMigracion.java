@@ -8,7 +8,6 @@ import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CustodiaMigracion {
     private final PagoRepository pagos;
-    private final OperacionRepository operaciones;
     private final EventoRepository eventos;
     private final CatalogoPagoClient catalogo;
 
@@ -29,16 +27,18 @@ public class CustodiaMigracion {
     @Transactional
     public void importar(Long pagoId) {
         var pago = pagos.bloquear(pagoId).orElseThrow();
-        // También protege dos instancias que intenten inicializar el mismo historial.
-        if (Boolean.TRUE.equals(pago.getCustodia())
-                || !operaciones.findByPagoIdOrderById(pagoId).isEmpty()
-                || pago.getProductoIds().isEmpty()) return;
+        if (Boolean.TRUE.equals(pago.getCustodia())) return;
+        var lineas = pago.getOperaciones().stream()
+                .filter(o -> Operacion.PENDIENTE_IMPORTACION.equals(o.getCausa()))
+                .sorted(java.util.Comparator.comparing(Operacion::getProductoId))
+                .toList();
+        if (lineas.isEmpty()) return;
 
-        var lineas = new ArrayList<Operacion>();
-        boolean completo = true;
+        boolean completo = lineas.size() == pago.getOperaciones().size();
         long subtotal = 0;
         Instant fecha = pago.getFecha().atZone(ZoneId.of("America/Santiago")).toInstant();
-        for (Long productoId : pago.getProductoIds().stream().distinct().sorted().toList()) {
+        for (var o : lineas) {
+            Long productoId = o.getProductoId();
             CatalogoPagoClient.Skin skin;
             try {
                 skin = catalogo.buscar(productoId);
@@ -47,23 +47,13 @@ public class CustodiaMigracion {
             }
             // Otros fallos HTTP abortan toda esta transacción: no se confunde
             // un servicio apagado con una publicación eliminada.
-            var o = new Operacion();
-            o.setPagoId(pagoId);
-            o.setProductoId(productoId);
-            o.setCompradorId(pago.getUsuarioId());
             boolean vendedorConocido = skin != null && skin.vendedorId() != null
                     && !skin.vendedorId().isBlank();
             o.setVendedorId(vendedorConocido ? skin.vendedorId() : "LEGACY_DESCONOCIDO");
             o.setNombre(skin != null && skin.nombre() != null ? skin.nombre() : "Skin #" + productoId);
-            Long precio = entero(pago.getPrecios().get(productoId));
+            Long precio = entero(o.getPrecio());
             completo &= vendedorConocido && precio != null && precio > 0;
-            o.setPrecio(precio == null || precio < 0 ? 0 : precio);
-            subtotal = Math.addExact(subtotal, o.getPrecio());
-            o.setCreada(fecha);
-            o.setActualizada(fecha);
-            o.setHistorica(true);
-            o.setRetenido(false);
-            lineas.add(o);
+            if (precio != null && precio > 0) subtotal = Math.addExact(subtotal, precio);
         }
 
         Long total = entero(pago.getMontoTotal());
@@ -75,15 +65,16 @@ public class CustodiaMigracion {
         for (var o : lineas) {
             o.setComisionBps(-1);
             if (completo) {
-                acumulado = Math.addExact(acumulado, o.getPrecio());
+                acumulado = Math.addExact(acumulado, o.precioEnPesos());
                 long bruto = BigInteger.valueOf(total).multiply(BigInteger.valueOf(acumulado))
                         .divide(BigInteger.valueOf(subtotal)).longValueExact();
-                o.setComision(bruto - asignado - o.getPrecio());
+                o.setComision(bruto - asignado - o.precioEnPesos());
                 asignado = bruto;
             }
             if (activarPendiente) {
                 o.setEstado(EstadoOperacion.PAGO_PENDIENTE);
                 o.setHistorica(false);
+                o.setCausa(null);
                 o.setVence(Instant.now().plus(Duration.ofHours(pagoHoras)));
             } else if (!completo) {
                 o.setEstado(EstadoOperacion.CONGELADA);
@@ -99,7 +90,6 @@ public class CustodiaMigracion {
                 o.setCausa("MIGRACION_HISTORICA_FECHA_APROXIMADA");
                 if (o.getEstado() == EstadoOperacion.COMPLETADA) o.setCompletada(fecha);
             }
-            operaciones.saveAndFlush(o);
             eventos.save(new EventoOperacion(o, "MIGRACION", "IMPORTAR",
                     "Importación automática sin movimientos de dinero. "
                     + (completo ? "Se conserva el cobro y precio históricos."

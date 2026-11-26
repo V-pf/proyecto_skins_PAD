@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import GraficoPreciosInventario from "../components/GraficoPreciosInventario";
 import { useInventario } from "../hooks/useInventario";
 import { inventarioService } from "../services/inventario.service";
@@ -9,54 +9,38 @@ import { DESGASTES, imagenDe } from "../lib/catalogos";
 export default function Vender() {
   const { usuario } = useAuth();
   const { recargar: recargarTienda } = useTienda();
-  const { datos, cargando, error, recargar, sincronizar } = useInventario();
+  const { datos, cargando, error, recargar } = useInventario();
   const [seleccion, setSeleccion] = useState<number | null>(null);
   const [precio, setPrecio] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState("");
   const [errorAccion, setErrorAccion] = useState("");
-  const [params] = useSearchParams();
   const elegido = datos?.items.find(v => v.item.id === seleccion);
-  async function vincular() {
-    setOcupado(true); setErrorAccion("");
-    try { const { url } = await inventarioService.vincular(); window.location.assign(url); }
-    catch (e) { setErrorAccion(e instanceof Error ? e.message : "No se pudo iniciar la vinculación."); setOcupado(false); }
-  }
   return <main className="container py-4">
     <h1 className="mb-4">Mi inventario CS2</h1>
-    {params.get("steam") === "vinculado" && <p className="alert alert-success">Steam vinculado. Tu inventario se importó correctamente.</p>}
-    {params.get("steam") === "sincronizacion-pendiente" && <p className="alert alert-warning">Steam vinculado. Haz público tu inventario y pulsa Sincronizar para completar la importación.</p>}
-    {params.get("steam") === "error" && <p className="alert alert-danger">No se pudo verificar la vinculación con Steam. Inténtalo de nuevo con un perfil que no esté vinculado a otra cuenta.</p>}
+    <p className="alert alert-secondary">
+      Con una integración de Steam, vincularías tu cuenta para importar tus skins de CS2 y verlas aquí.
+      Para esta demostración usamos inventarios precargados.
+    </p>
     {error && <p role="alert" className="alert alert-danger">{error} <button onClick={recargar}>Reintentar</button></p>}
     {errorAccion && <p role="alert" className="alert alert-danger">{errorAccion}</p>}
     {aviso && <p role="status" className="alert alert-success">{aviso} <Link to="/cliente/publicaciones">Ver mis publicaciones</Link></p>}
     {cargando && <p role="status">Cargando inventario…</p>}
     {datos && <>
-      {datos.demo && <p className="alert alert-warning">Los ítems de prueba tienen historial de precios simulado.</p>}
-      {datos.steamId ? <p>Perfil vinculado · <a href={"https://steamcommunity.com/profiles/" + datos.steamId} target="_blank" rel="noreferrer">Ver en Steam</a></p> : <>
-        <p>Vincula tu cuenta de Steam para importar automáticamente tu inventario de CS2. Tu inventario debe ser público.</p>
-        <button className="btn btn-primary mb-3" disabled={ocupado || cargando} onClick={() => void vincular()}>Vincular con Steam</button>
-      </>}
-      {(datos.steamId || datos.demo) && <>
-        {datos.steamId && <div className="d-flex align-items-center gap-3 mb-3">
-          <button className="btn btn-outline-light" disabled={ocupado || cargando} onClick={() => void sincronizar()}>Sincronizar inventario</button>
-          {datos.sincronizado && <small>Actualizado {new Date(datos.sincronizado).toLocaleString("es-CL")}</small>}
-        </div>}
         {!usuario?.verificado && <p className="alert alert-info">Tu cuenta debe ser verificada por administración para publicar.</p>}
-        {!cargando && !datos.items.length && <p>Tu inventario de CS2 está vacío.</p>}
+        {!datos.items.length && <p>Tu cuenta no tiene skins en el inventario.</p>}
         <div className="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3">
           {datos.items.map(({ item, publicable, estadoPublicacion }) => <div className="col" key={item.id}>
             <article className={"card h-100 p-3 " + (seleccion === item.id ? "border-primary" : "")}>
               {(item.imagen || item.tipo) && <img src={item.imagen || imagenDe(item.tipo!)} alt={item.nombre} height={140} style={{ objectFit: "contain" }} />}
               <h2 className="h6 mt-2">{item.nombre}</h2>
               <p className="small">
-                {item.demo && <span className="badge text-bg-secondary me-2">Prueba</span>}
                 {item.desgaste && DESGASTES[item.desgaste]?.nombre}
               </p>
               <p className="small text-body-secondary">
                 {estadoPublicacion === "RESERVADO" ? "Reservado"
                   : !item.presente ? "Ya no está en tu inventario"
-                  : !item.intercambiable ? "Intercambio bloqueado en Steam"
+                  : !item.intercambiable ? "Ítem no habilitado para la venta"
                   : !item.tipo && !item.productoOrigenId ? "Tipo de ítem no admitido para venta"
                   : estadoPublicacion && !publicable ? "Publicación " + estadoPublicacion.toLowerCase().replace(/_/g, " ")
                   : "Disponible para publicar"}
@@ -82,7 +66,6 @@ export default function Vender() {
             <button className="btn btn-primary" disabled={ocupado || cargando || !usuario?.verificado}>{ocupado ? "Publicando…" : "Publicar skin"}</button>
           </form>}
         </section>}
-      </>}
     </>}
   </main>;
 }

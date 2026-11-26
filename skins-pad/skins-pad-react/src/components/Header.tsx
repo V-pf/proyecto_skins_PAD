@@ -4,7 +4,19 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCarrito } from "../context/CarritoContext";
-import { ENLACES_CUENTA_CLIENTE } from "./MenuCuenta";
+
+const ENLACES_CUENTA_CLIENTE = [
+  { a: "/cliente/panel", texto: "Resumen", emoji: "📊" },
+  { a: "/cliente/compras", texto: "Compras", emoji: "🛒" },
+  { a: "/cliente/ventas", texto: "Ventas", emoji: "💰" },
+  { a: "/cliente/pagos", texto: "Pagos", emoji: "💳" },
+  { a: "/cliente/inventario", texto: "Inventario", emoji: "🎒" },
+  { a: "/cliente/publicaciones", texto: "Publicaciones", emoji: "📦" },
+  { a: "/cliente/billetera", texto: "Billetera", emoji: "👛" },
+  { a: "/cliente/perfil", texto: "Editar perfil", emoji: "✏️" },
+  { a: "/cliente/soporte", texto: "Soporte", emoji: "🛠️" },
+  { a: "/cliente/soporte/reportes", texto: "Mis reportes", emoji: "📋" },
+];
 
 export default function Header() {
   const { usuario, salir } = useAuth();
@@ -22,6 +34,7 @@ export default function Header() {
   }, [ubicacion.pathname, ubicacion.search]);
 
   function cerrarSesion() {
+    setCuentaAbierta(false);
     salir();
     navigate("/");
   }
@@ -54,11 +67,6 @@ export default function Header() {
               <li className="nav-item">
                 <NavLink className={claseLink} to="/catalogo">
                   Catálogo
-                </NavLink>
-              </li>
-              <li className="nav-item">
-                <NavLink className={claseLink} to="/categorias">
-                  Categorías
                 </NavLink>
               </li>
               <li className="nav-item">
@@ -95,10 +103,11 @@ export default function Header() {
                 <ul id="menu-cuenta" className={`dropdown-menu dropdown-menu-end${cuentaAbierta ? " show" : ""}`}>
                   {usuario ? (
                     <>
-                      {usuario.rol !== "admin" && ENLACES_CUENTA_CLIENTE.map(({ a, texto }) => (
+                      {usuario.rol !== "admin" && ENLACES_CUENTA_CLIENTE.map(({ a, texto, emoji }) => (
                         <li key={a}>
-                          <Link className="dropdown-item" to={a} onClick={() => setCuentaAbierta(false)}>
-                            {texto}
+                          <Link className="dropdown-item cuenta-opcion" to={a} onClick={() => setCuentaAbierta(false)}>
+                            <span aria-hidden="true">{emoji}</span>
+                            <span>{texto}</span>
                           </Link>
                         </li>
                       ))}
@@ -113,8 +122,9 @@ export default function Header() {
                         <hr className="dropdown-divider" />
                       </li>
                       <li>
-                        <button type="button" className="dropdown-item" onClick={cerrarSesion}>
-                          Cerrar sesión
+                        <button type="button" className="dropdown-item cuenta-opcion text-danger-emphasis" onClick={cerrarSesion}>
+                          <span aria-hidden="true">🚪</span>
+                          <span>Cerrar sesión</span>
                         </button>
                       </li>
                     </>

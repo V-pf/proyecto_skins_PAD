@@ -31,7 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CatalogoService {
 
-    private static final String NO_DISPONIBLE = "El ítem dejó de estar disponible en Steam.";
 
     private final ProductoRepository productos;
     private final CategoriaRepository categorias;
@@ -142,7 +141,6 @@ public class CatalogoService {
         producto.setStattrak(Boolean.TRUE.equals(request.stattrak()));
         producto.setFloatValor(request.floatValor());
         producto.setMotivoRechazo(request.motivoRechazo());
-        producto.setUrlIntercambio(request.urlIntercambio());
     }
 
     @Transactional
@@ -158,7 +156,8 @@ public class CatalogoService {
                     verificarDisponibleParaCompra(p);
                 }
                 case "DESCARTAR" -> {
-                    if(r.referencia().equals(p.getReservaPago()) && p.getEstado()==EstadoProducto.INACTIVO){
+                    if (r.referencia().equals(p.getReservaPago())
+                            && (p.getEstado() == EstadoProducto.INACTIVO || p.getEstado() == EstadoProducto.ELIMINADO)) {
                         liberarReserva(p);
                     }
                 }
@@ -186,7 +185,7 @@ public class CatalogoService {
     }
 
     private EstadoProducto estadoAlLiberar(Producto producto) {
-        return Boolean.TRUE.equals(producto.getRetiradaParaInventario())
+        return producto.getEstado() == EstadoProducto.ELIMINADO
             ? EstadoProducto.ELIMINADO : EstadoProducto.ACTIVO;
     }
 
@@ -239,7 +238,7 @@ public class CatalogoService {
     @Transactional
     public ImagenProducto agregarImagen(Long productoId, ImagenRequest request) {
         Producto producto = buscarPorId(productoId);
-        if(producto.getInventarioId()!=null) throw new IllegalStateException("Las imágenes del inventario proceden de Steam.");
+        if(producto.getInventarioId()!=null) throw new IllegalStateException("Las imágenes de esta publicación provienen del inventario.");
         // Además del tipo declarado, se revisan el tamaño y los primeros bytes del archivo.
         String url=request.urlImagen();
         if (!url.matches("data:image/(png|jpeg);base64,[A-Za-z0-9+/=]+"))
@@ -266,7 +265,7 @@ public class CatalogoService {
     @Transactional
     public void quitarImagen(Long productoId, Long imagenId) {
         var imagen=imagenes.findById(imagenId).orElseThrow();
-        if(imagen.getProducto().getInventarioId()!=null) throw new IllegalStateException("Las imágenes del inventario proceden de Steam.");
+        if(imagen.getProducto().getInventarioId()!=null) throw new IllegalStateException("Las imágenes de esta publicación provienen del inventario.");
         if(!productoId.equals(imagen.getProducto().getId()))throw new IllegalArgumentException("Imagen ajena");
         imagenes.delete(imagen);
     }
@@ -276,7 +275,7 @@ public class CatalogoService {
         if (!imagenes.existsById(imagenId)) {
             throw new EntityNotFoundException("Imagen no encontrada: " + imagenId);
         }
-        if(imagenes.findById(imagenId).orElseThrow().getProducto().getInventarioId()!=null) throw new IllegalStateException("Las imágenes del inventario proceden de Steam.");
+        if(imagenes.findById(imagenId).orElseThrow().getProducto().getInventarioId()!=null) throw new IllegalStateException("Las imágenes de esta publicación provienen del inventario.");
         imagenes.deleteById(imagenId);
     }
 
@@ -308,26 +307,6 @@ public class CatalogoService {
                     return new EstadoPublicacionInventario(p.getInventarioId(), p.getId(), estado, p.permiteRepublicar());
                 })
                 .toList();
-    }
-
-    @Transactional
-    public void actualizarDisponibilidadInventario(String usuarioId, Set<Long> disponibles) {
-        for (Producto p : productos.bloquearPublicaciones(usuarioId)) {
-            if (p.getReservaPago() != null) continue;
-            if (!disponibles.contains(p.getInventarioId())
-                    && (p.getEstado() == EstadoProducto.ACTIVO
-                            || p.getEstado() == EstadoProducto.PENDIENTE_APROBACION)) {
-                p.setEstado(EstadoProducto.INACTIVO);
-                p.setMotivoRechazo(NO_DISPONIBLE);
-            } else if (disponibles.contains(p.getInventarioId())
-                    && p.getEstado() == EstadoProducto.INACTIVO
-                    && p.getCategoria().isEstadoHabilitada()
-                    && !Boolean.FALSE.equals(p.getRevisionApta())
-                    && NO_DISPONIBLE.equals(p.getMotivoRechazo())) {
-                p.setEstado(EstadoProducto.ACTIVO);
-                p.setMotivoRechazo(null);
-            }
-        }
     }
 
     private void verificarDisponibleParaCompra(Producto producto) {
@@ -370,14 +349,9 @@ public class CatalogoService {
         p.setPrecio(precio);
         p.setEstado(EstadoProducto.ACTIVO);
         p.setInventarioId(item.id());
-        p.setDemo(item.demo());
-        p.setDescripcion(
-                item.demo()
-                        ? "Ítem de prueba del inventario de demostración."
-                        : "Ítem importado del inventario de Steam.");
+        p.setDescripcion("Skin publicada desde el inventario del vendedor.");
         if (origen != null) {
             p.setFloatValor(origen.getFloatValor());
-            p.setUrlIntercambio(origen.getUrlIntercambio());
             origen.getImagenes().forEach(imagen -> agregarImagenDeInventario(p, imagen.getUrlImagen(), imagen.isEsPrincipal()));
         }
         if (p.getImagenes().isEmpty() && item.imagen() != null) {
