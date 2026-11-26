@@ -68,7 +68,7 @@ public class UsuarioService {
   }
 
   @Transactional
-  public LoginResponse iniciarSesion(LoginRequest request) {
+  public LoginResponse iniciarSesion(LoginRequest request, boolean recordar) {
     String identificador = request.identificador().trim();
     Usuario usuario =
         usuarios
@@ -83,10 +83,11 @@ public class UsuarioService {
     }
 
     // Con las credenciales aprobadas se guarda el token de la nueva sesión.
+    String secreto = (recordar ? "p." : "s.") + CredencialRenovacion.generar();
     Sesion sesion =
-        new Sesion(UUID.randomUUID().toString(), usuario.getId(), LocalDateTime.now(), null);
+        new Sesion(CredencialRenovacion.idSesion(secreto), usuario.getId(), LocalDateTime.now(), null);
     sesiones.save(sesion);
-    return new LoginResponse(sesion.getToken(), usuario, sesion);
+    return new LoginResponse(secreto, usuario, sesion);
   }
 
   @Transactional
@@ -103,7 +104,7 @@ public class UsuarioService {
   }
 
   @Transactional(readOnly = true)
-  public Usuario validarToken(String token) {
+  public Usuario usuarioDeSesion(String token) {
     Sesion sesion =
         sesiones
             .findByTokenAndCierreIsNull(token)
@@ -117,6 +118,16 @@ public class UsuarioService {
       throw new IllegalArgumentException("Token inválido o vencido");
     }
     return buscar(sesion.getUsuarioId());
+  }
+
+  @Transactional
+  public Usuario renovarSesion(String sid) {
+    LocalDateTime ahora = LocalDateTime.now();
+    if (sesiones.renovar(sid, ahora, ahora.minusDays(30)) != 1) throw TokensJwt.invalido();
+    Usuario usuario = usuarioDeSesion(sid);
+    if (usuario.isSuspendido()) throw new org.springframework.web.server.ResponseStatusException(
+        org.springframework.http.HttpStatus.FORBIDDEN);
+    return usuario;
   }
 
   @Transactional(readOnly = true)

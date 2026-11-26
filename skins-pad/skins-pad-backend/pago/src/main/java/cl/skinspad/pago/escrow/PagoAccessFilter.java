@@ -8,7 +8,7 @@ public class PagoAccessFilter extends OncePerRequestFilter {
  @Override protected void doFilterInternal(HttpServletRequest r,HttpServletResponse response,FilterChain chain)throws ServletException,IOException{
    String path=r.getRequestURI();if(!path.startsWith("/api/pagos")){chain.doFilter(r,response);return;}
    String auth=r.getHeader("Authorization");if(auth==null||!auth.startsWith("Bearer ")){response.sendError(401);return;}
-   StatsUserClient.Identity u;try{u=users.validate(auth.substring(7));}catch(feign.FeignException e){response.sendError(e.status()>=500?503:401);return;}
+   StatsUserClient.Identity u;try{u=users.validate(auth.substring(7));}catch(org.springframework.web.server.ResponseStatusException e){response.sendError(e.getStatusCode().value());return;}catch(feign.FeignException e){response.sendError(e.status()>=500?503:401);return;}
    if(u.suspendido()){response.sendError(403);return;}boolean admin="admin".equals(u.rol()),get=r.getMethod().equals("GET"),ok=false;
    if(path.equals("/api/pagos/checkout"))ok=!admin && r.getMethod().equals("POST");
    else if(path.equals("/api/pagos/mis-ventas"))ok=!admin&&get;
