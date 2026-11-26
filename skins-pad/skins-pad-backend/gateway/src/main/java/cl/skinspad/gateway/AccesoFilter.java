@@ -55,8 +55,7 @@ public class AccesoFilter implements GlobalFilter, Ordered {
     // Permite consultar el catálogo y los perfiles públicos, registrarse e iniciar sesión.
     if (m.equals("OPTIONS")
         || (m.equals("GET")
-            && (p.equals("/api/steam/callback")
-                || p.matches("/api/calificaciones/vendedor/[^/]+")
+            && (p.matches("/api/calificaciones/vendedor/[^/]+")
                 || p.startsWith("/api/productos")
                 || p.startsWith("/api/categorias")
                 || p.equals("/api/usuarios/publicos")))
@@ -172,8 +171,7 @@ public class AccesoFilter implements GlobalFilter, Ordered {
     if (p.equals("/api/auth/validar"))
       return Mono.just(token.equals(x.getRequest().getQueryParams().getFirst("token")));
     if (p.equals("/api/pagos/mis-ventas")) return Mono.just(leer && !admin);
-    if (p.equals("/api/calificaciones") || p.equals("/api/steam/vincular")
-        || p.equals("/api/inventario/sincronizar") || p.equals("/api/inventario/publicaciones")) {
+    if (p.equals("/api/calificaciones") || p.equals("/api/inventario/publicaciones")) {
       return Mono.just(m.equals("POST") && "cliente".equals(u.get("rol")));
     }
     if (p.equals("/api/inventario") || p.matches("/api/inventario/[0-9]+/precios")) {

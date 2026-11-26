@@ -7,6 +7,8 @@ interface Props<T extends Valores> {
   etiqueta: ReactNode;
   tipo?: "text" | "password" | "email" | "number" | "date" | "tel" | "textarea" | "select" | "checkbox";
   placeholder?: string;
+  prefijo?: string;
+  transformar?: (valor: string) => string;
   ayuda?: ReactNode;
   opciones?: { valor: string; etiqueta: string }[];
   textoOpcionVacia?: string;
@@ -29,6 +31,8 @@ export default function Campo<T extends Valores>({
   etiqueta,
   tipo = "text",
   placeholder,
+  prefijo,
+  transformar,
   ayuda,
   opciones,
   textoOpcionVacia = "Selecciona una opción",
@@ -43,11 +47,13 @@ export default function Campo<T extends Valores>({
   const id = `${form.id}-${nombre}`;
   const error = form.errores[nombre];
   const valor = form.valores[nombre];
-  const describe = [ayuda ? `${id}-ayuda` : "", error ? `${id}-error` : ""].filter(Boolean).join(" ") || undefined;
+  const describe = [prefijo ? id + "-prefijo" : "", ayuda ? `${id}-ayuda` : "", error ? `${id}-error` : ""].filter(Boolean).join(" ") || undefined;
 
   const alCambiar = (e: ChangeEvent<ElementoForm>) => {
     const el = e.target;
-    form.set(nombre, el instanceof HTMLInputElement && el.type === "checkbox" ? el.checked : el.value);
+    form.set(nombre, el instanceof HTMLInputElement && el.type === "checkbox"
+      ? el.checked
+      : transformar?.(el.value) ?? el.value);
   };
 
   const comunes = {
@@ -128,10 +134,16 @@ export default function Campo<T extends Valores>({
       <label htmlFor={id} className="form-label">
         {etiqueta}
       </label>
-      {control}
+      {prefijo ? (
+        <div className="input-group has-validation campo-con-prefijo">
+          <span className="input-group-text" id={id + "-prefijo"}>{prefijo}</span>
+          {control}
+          {mensajeError}
+        </div>
+      ) : control}
       {extra}
       {textoAyuda}
-      {mensajeError}
+      {!prefijo && mensajeError}
     </div>
   );
 }

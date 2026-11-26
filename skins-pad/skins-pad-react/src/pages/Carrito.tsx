@@ -6,8 +6,8 @@ import Modal from "../components/Modal";
 import { useAuth } from "../context/AuthContext";
 import { useCarrito } from "../context/CarritoContext";
 import { useTienda } from "../context/TiendaContext";
-import { DESGASTES, imagenDe, METODOS_PAGO } from "../lib/catalogos";
-import { formatoCLP, hoyISO } from "../lib/formato";
+import { DESGASTES, imagenDe } from "../lib/catalogos";
+import { formatoCLP } from "../lib/formato";
 
 export default function Carrito() {
   const { ejecutar, ocupado } = useOperacion();
@@ -17,11 +17,7 @@ export default function Carrito() {
     useCarrito();
   const navigate = useNavigate();
   const [modalAbierto, setModalAbierto] = useState(false);
-  const [metodo, setMetodo] = useState("Saldo");
   const [error, setError] = useState("");
-  const admiteSimulacion = lineas.length > 0 && lineas.every(({ producto }) => producto.demo === true);
-  const metodos = admiteSimulacion ? [...METODOS_PAGO.saldo, ...METODOS_PAGO.simulados] : METODOS_PAGO.saldo;
-  const metodoSeleccionado = admiteSimulacion ? metodo : "Saldo";
 
   // Si falta la sesión, se recuerda el carrito para volver después de entrar.
   function irAPagar() {
@@ -37,19 +33,14 @@ export default function Carrito() {
     void ejecutar(async () => {
       if (!usuario || lineas.length === 0) return;
       // El total del carrito sirve para avisar de saldo insuficiente antes de enviar la compra.
-      if (metodoSeleccionado === "Saldo") {
-        if (usuario.saldo < totales.total) {
-          setError(
-            `Tu saldo (${formatoCLP(usuario.saldo)}) no alcanza para pagar ${formatoCLP(totales.total)}.`,
-          );
-          return;
-        }
+      if (usuario.saldo < totales.total) {
+        setError(
+          `Tu saldo (${formatoCLP(usuario.saldo)}) no alcanza para pagar ${formatoCLP(totales.total)}.`,
+        );
+        return;
       }
       // Primero se registra el pago. Si luego falla el vaciado, se avisa que el pago ya quedó registrado.
-      const pago = await pagar(
-        lineas.map((l) => l.producto.id),
-        metodoSeleccionado,
-      );
+      const pago = await pagar(lineas.map((l) => l.producto.id));
       try {
         await vaciar();
       } catch {
@@ -190,7 +181,7 @@ export default function Carrito() {
       )}
       <Modal
         abierto={modalAbierto}
-        titulo="Selecciona tu método de pago"
+        titulo="Confirmar pago con saldo"
         onCerrar={() => setModalAbierto(false)}
         pie={
           <>
@@ -217,25 +208,7 @@ export default function Carrito() {
             {error}
           </div>
         )}
-        <p className="fw-bold mb-2">Método de pago:</p>
-        {metodos.map((m) => (
-          <div className="form-check mb-2" key={m.valor}>
-            <input
-              className="form-check-input"
-              type="radio"
-              name="metodoPago"
-              id={`metodo-${m.valor}`}
-              checked={metodoSeleccionado === m.valor}
-              onChange={() => setMetodo(m.valor)}
-            />
-            <label className="form-check-label" htmlFor={`metodo-${m.valor}`}>
-              {m.etiqueta}
-              {m.valor === "Saldo" && usuario
-                ? ` (${formatoCLP(usuario.saldo)} disponibles)`
-                : ""}
-            </label>
-          </div>
-        ))}
+        {usuario && <p>Saldo disponible en tu billetera <strong>{formatoCLP(usuario.saldo)}</strong></p>}
         <p className="small text-body-secondary mt-3 mb-0">
           Total a pagar: <strong>{formatoCLP(totales.total)}</strong>
         </p>

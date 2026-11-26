@@ -20,7 +20,7 @@ public class PagoController {
     @GetMapping("/mis-ventas") public List<cl.skinspad.pago.service.CheckoutService.Venta> ventas(@RequestHeader("X-Skins-Usuario") String id){
         var resultado=new java.util.ArrayList<>(checkout.ventas(id));
         var grupos=operaciones.findVentasLiquidadasDeVendedor(id).stream().collect(java.util.stream.Collectors.groupingBy(cl.skinspad.pago.escrow.Operacion::getPagoId));
-        grupos.forEach((pagoId,lineas)->resultado.add(new cl.skinspad.pago.service.CheckoutService.Venta(pagoId,lineas.stream().map(cl.skinspad.pago.escrow.Operacion::getCompletada).max(java.util.Comparator.naturalOrder()).orElseThrow().atZone(java.time.ZoneId.of("America/Santiago")).toLocalDateTime(),EstadoPago.APROBADO,lineas.stream().map(cl.skinspad.pago.escrow.Operacion::getProductoId).toList(),lineas.stream().collect(java.util.stream.Collectors.toMap(cl.skinspad.pago.escrow.Operacion::getProductoId,o->java.math.BigDecimal.valueOf(o.getPrecio()))))));
+        grupos.forEach((pagoId,lineas)->resultado.add(new cl.skinspad.pago.service.CheckoutService.Venta(pagoId,lineas.stream().map(cl.skinspad.pago.escrow.Operacion::getCompletada).max(java.util.Comparator.naturalOrder()).orElseThrow().atZone(java.time.ZoneId.of("America/Santiago")).toLocalDateTime(),EstadoPago.APROBADO,lineas.stream().map(cl.skinspad.pago.escrow.Operacion::getProductoId).toList(),lineas.stream().collect(java.util.stream.Collectors.toMap(cl.skinspad.pago.escrow.Operacion::getProductoId,cl.skinspad.pago.escrow.Operacion::getPrecio)))));
         return resultado;
     }
     @GetMapping public List<Pago> listar(){return checkout.listar();}

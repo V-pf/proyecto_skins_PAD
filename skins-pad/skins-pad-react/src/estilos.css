@@ -104,15 +104,6 @@ a:hover { color: var(--acento-oscuro); }
   border-bottom: 1px solid var(--linea);
   padding-block: clamp(3rem, 8vw, 6rem);
 }
-.hero-precio-tira {
-  display: flex;
-  gap: 2rem;
-  overflow-x: auto;
-  padding-bottom: .5rem;
-}
-.hero-precio-tira dl { min-width: 150px; margin: 0; }
-.hero-precio-tira dt { color: var(--texto-tenue); font-size: .8rem; }
-.hero-precio-tira dd { font-family: system-ui, sans-serif; font-size: 1.4rem; color: var(--acento); margin: 0; }
 
 /* ---------- tarjetas de producto ---------- */
 .card, .producto {
@@ -157,6 +148,71 @@ a:hover { color: var(--acento-oscuro); }
 /* ---------- filtros ---------- */
 .filtros { background: var(--panel); border: 1px solid var(--linea); border-radius: var(--radio); padding: 1.25rem; }
 .filtros legend { font-size: .85rem; color: var(--texto-tenue); text-transform: none; }
+
+.filtro-rango {
+  position: relative;
+  height: 2rem;
+}
+.filtro-rango-pista {
+  position: absolute;
+  inset: calc(50% - .25rem) .625rem auto;
+  height: .5rem;
+  border-radius: 1rem;
+}
+.filtro-rango-seleccion {
+  position: absolute;
+  inset-block: 0;
+  border: 1px solid var(--acento);
+  background: color-mix(in srgb, var(--acento) 28%, transparent);
+  border-radius: inherit;
+}
+.filtro-rango-barra {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+.filtro-rango-barra::-webkit-slider-thumb {
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--panel);
+  border-radius: 50%;
+  background: var(--acento);
+  pointer-events: auto;
+  cursor: grab;
+}
+.filtro-rango-barra::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--panel);
+  border-radius: 50%;
+  background: var(--acento);
+  pointer-events: auto;
+  cursor: grab;
+}
+.filtro-rango-barra:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+  border-radius: .25rem;
+}
+.filtros button[aria-pressed="true"] {
+  background: var(--acento);
+  color: var(--panel);
+}
+.campo-con-prefijo .input-group-text {
+  padding-inline: .5rem;
+  font-size: .8rem;
+}
+.campo-con-prefijo .form-control {
+  min-width: 0;
+}
 
 /* ---------- formularios ---------- */
 .form-control, .form-select {
@@ -230,7 +286,6 @@ caption { color: var(--texto-tenue); }
 .stat-tile dd { font-family: system-ui, sans-serif; font-size: 1.8rem; margin: 0; }
 
 /* ---------- utilidades ---------- */
-.linea-divisoria { border-color: var(--linea); }
 details > summary { cursor: pointer; color: var(--texto); }
 details[open] > summary { color: var(--acento); }
 
@@ -249,6 +304,13 @@ details[open] > summary { color: var(--acento); }
 .dropdown-menu { background: var(--panel); border: 1px solid var(--linea); }
 .dropdown-item { color: var(--texto-tenue); }
 .dropdown-item:hover { background: var(--panel-alto); color: var(--texto); }
+.cuenta-opcion {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr;
+  align-items: center;
+  column-gap: .5rem;
+}
+.cuenta-opcion > [aria-hidden="true"] { text-align: center; }
 .btn-primary { --bs-btn-bg: var(--acento); --bs-btn-border-color: var(--acento); --bs-btn-color: #1c1608; --bs-btn-hover-bg: var(--acento-oscuro); --bs-btn-hover-border-color: var(--acento-oscuro); --bs-btn-hover-color: #1c1608; --bs-btn-active-bg: var(--acento-oscuro); --bs-btn-active-border-color: var(--acento-oscuro); --bs-btn-active-color: #1c1608; --bs-btn-disabled-bg: var(--acento); --bs-btn-disabled-border-color: var(--acento); --bs-btn-disabled-color: #1c1608; }
 .navbar .nav-link.active { color: var(--acento); }
 

@@ -13,7 +13,7 @@ export default function GraficoPreciosInventario({ itemId }: { itemId: number })
       </select></label>
     </div>
     {error ? <p role="alert">{error}</p> : !datos ? <p role="status">Cargando precios…</p> : <>
-      <p className="small text-body-secondary">{datos.demo ? "Datos de prueba · historial simulado" : "Ventas completadas en Skins PAD"} · Precio medio diario en CLP, sin comisión. Mismo acabado, desgaste y variante.</p>
+      <p className="small text-body-secondary">Ventas completadas en Skins PAD · Precio medio diario en CLP, sin comisión. Mismo acabado, desgaste y variante.</p>
       {!datos.puntos.length ? <p>No hay ventas de esta variante durante el período seleccionado.</p> : <>
         <div style={{ width: "100%", height: 260 }}>
           <ResponsiveContainer><LineChart data={datos.puntos} margin={{ top: 10, right: 20, left: 15, bottom: 5 }} accessibilityLayer>

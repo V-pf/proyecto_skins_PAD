@@ -28,8 +28,7 @@ export async function cargarDemo({ base = 'http://localhost:8090/api', passwordA
       let u = cuentas.find(u => u.username === username);
       if (u) return u;
       u = await api('/auth/registro', 'POST', { nombre: `Cuenta demo ${username}`, username,
-        email: `${username}@skinspad.example`, password: 'Demo1234!', fechaNacimiento: '1998-01-01',
-        linkSteam: 'https://steamcommunity.com/id/skinspad-demo' });
+        email: `${username}@skinspad.example`, password: 'Demo1234!', fechaNacimiento: '1998-01-01' });
       if (verificado || suspendido) u = await api(`/usuarios/${u.id}/estado`, 'PATCH', {
         verificado, suspendido, motivo: 'Estado inicial del escenario de demostración',
       }, admin.token);
@@ -59,7 +58,6 @@ export async function cargarDemo({ base = 'http://localhost:8090/api', passwordA
       const datos = { vendedorId: vendedor.id, vendedor: vendedor.username, categoriaId: cats[tipo].id,
         nombre, tipo, grado: 'clasificado', desgaste: 'mw', precio, stattrak: false, floatValor: 0.12,
         descripcion: 'Publicación de prueba. Usa esta skin para ensayar el flujo indicado en su nombre.',
-        urlIntercambio: 'https://steamcommunity.com/tradeoffer/new/?partner=123456789&token=DEMO1234',
         estado: 'PENDIENTE_APROBACION' };
       p = await api('/productos', 'POST', datos, venta.token);
       if (estado !== 'PENDIENTE_APROBACION') p = await api(`/productos/${p.id}`, 'PUT', {

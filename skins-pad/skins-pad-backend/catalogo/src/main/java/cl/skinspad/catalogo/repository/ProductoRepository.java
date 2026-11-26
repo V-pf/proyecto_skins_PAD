@@ -29,7 +29,7 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     @Query("""
         update Producto p set p.estado = :activo
         where p.estado = :pendiente and p.inventarioId is not null
-          and p.reservaPago is null and p.trasladoPendiente = false
+          and p.reservaPago is null
           and (p.revisionApta is null or p.revisionApta = true)
           and p.categoria.id in (select c.id from Categoria c where c.estadoHabilitada = true)
         """)
@@ -42,15 +42,12 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     boolean existsByInventarioOcupadoId(Long inventarioId);
     @org.springframework.data.jpa.repository.Query("""
         select p.id from Producto p
-        where (p.trasladoPendiente is null or p.trasladoPendiente = true)
+        where p.inventarioId is null
           and p.vendedorId is not null and trim(p.vendedorId) <> ''
         order by p.id
         """)
     List<Long> buscarPendientesDeTraslado();
     List<Producto> findByVendedorIdAndInventarioIdIsNotNullOrderById(String vendedorId);
-    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
-    @org.springframework.data.jpa.repository.Query("select p from Producto p where p.vendedorId = :id and p.inventarioOcupadoId is not null order by p.id")
-    List<Producto> bloquearPublicaciones(@org.springframework.data.repository.query.Param("id") String id);
     boolean existsByCategoria_Id(Long categoriaId);
     List<Producto> findByVendedorId(String vendedorId);
 }

@@ -59,7 +59,6 @@ public class CatalogoSeed {
         p.setStattrak(stattrak);
         p.setFloatValor(floatV == null?null:new BigDecimal(floatV));
         p.setEstado(EstadoProducto.INACTIVO);
-        p.setTrasladoPendiente(true);
         p.setDescripcion("Skin publicada en Skins PAD");
         repo.save(p);
     }

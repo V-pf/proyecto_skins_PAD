@@ -6,7 +6,7 @@ import MedidorClave from "../components/MedidorClave";
 import { useAuth } from "../context/AuthContext";
 import { useFormulario } from "../lib/useFormulario";
 import type { Errores } from "../lib/useFormulario";
-import { aceptado, correo, mayorDeEdad, opcional, requerido } from "../lib/validaciones";
+import { aceptado, correo, mayorDeEdad, requerido } from "../lib/validaciones";
 
 interface RegistroForm {
   [clave: string]: string | boolean;
@@ -16,7 +16,6 @@ interface RegistroForm {
   clave: string;
   confirmar: string;
   fechaNacimiento: string;
-  urlSteam: string;
   terminos: boolean;
   mayorEdad: boolean;
 }
@@ -28,7 +27,6 @@ const INICIAL: RegistroForm = {
   clave: "",
   confirmar: "",
   fechaNacimiento: "",
-  urlSteam: "",
   terminos: false,
   mayorEdad: false,
 };
@@ -49,7 +47,6 @@ export default function Registro() {
       clave: v.clave === "" ? "Este campo es obligatorio." : v.clave.length < 8 ? "Escribe al menos 8 caracteres." : "",
       confirmar: v.confirmar === "" ? "Este campo es obligatorio." : v.confirmar !== v.clave ? "No coincide con el campo anterior." : "",
       fechaNacimiento: mayorDeEdad(v.fechaNacimiento),
-      urlSteam: opcional(v.urlSteam, "url_steam"),
       terminos: aceptado(v.terminos),
       mayorEdad: aceptado(v.mayorEdad),
     })
@@ -68,7 +65,6 @@ export default function Registro() {
       correo: v.correo,
       clave: v.clave,
       fechaNacimiento: v.fechaNacimiento,
-      urlSteam: v.urlSteam,
     });
     setEnviando(false);
     if (error) {
@@ -108,16 +104,6 @@ export default function Registro() {
         />
         <Campo form={form} nombre="confirmar" tipo="password" etiqueta="Confirmar contraseña" autoComplete="new-password" />
         <Campo form={form} nombre="fechaNacimiento" tipo="date" etiqueta="Fecha de nacimiento" />
-        <Campo
-          form={form}
-          nombre="urlSteam"
-          etiqueta={
-            <>
-              Enlace a tu perfil de Steam <span className="text-body-secondary fw-normal"></span>
-            </>
-          }
-          placeholder="https://steamcommunity.com/id/tu-usuario"
-        />
         <Campo form={form} nombre="terminos" tipo="checkbox" etiqueta="He leído y acepto los términos de uso y la política de privacidad." />
         <Campo form={form} nombre="mayorEdad" tipo="checkbox" etiqueta="Declaro que soy mayor de 18 años." />
         <button type="submit" className="btn btn-primary" disabled={enviando}>

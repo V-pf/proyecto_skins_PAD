@@ -2,11 +2,13 @@ package cl.skinspad.pago.stats;
 
 import java.time.*;
 import java.time.temporal.ChronoUnit;
+import java.math.BigDecimal;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import cl.skinspad.pago.domain.MetodoPago;
+import cl.skinspad.pago.domain.Pago;
 import cl.skinspad.pago.repository.PagoRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -55,14 +57,19 @@ public class StatsService {
     }).toList();
     for(var o:all){if(o.getEstado()!=cl.skinspad.pago.escrow.EstadoOperacion.COMPLETADA || o.getCompletada()==null)continue;
       var original=byId.get(o.getPagoId());if(original==null)continue;
-      var p=new cl.skinspad.pago.domain.Pago();p.setId(original.getId());p.setUsuarioId(o.getCompradorId());p.setPedidoId(original.getPedidoId());p.setMetodo(original.getMetodo());p.setEstado(cl.skinspad.pago.domain.EstadoPago.APROBADO);p.setLiquidado(true);p.setFecha(o.getCompletada().atZone(ZONE).toLocalDateTime());p.setMontoTotal(java.math.BigDecimal.valueOf(o.getPrecio()+o.getComision()));p.setProductoIds(List.of(o.getProductoId()));p.setPrecios(Map.of(o.getProductoId(),java.math.BigDecimal.valueOf(o.getPrecio())));ps.add(p);
+      var venta = new Pago(original.getId(), original.getPedidoId(), o.getCompradorId(),
+          o.getPrecio().add(BigDecimal.valueOf(o.getComision())), original.getMetodo(),
+          cl.skinspad.pago.domain.EstadoPago.APROBADO, null, o.getCompletada().atZone(ZONE).toLocalDateTime());
+      venta.setLiquidado(true);
+      venta.getOperaciones().add(o);
+      ps.add(venta);
     }
     final var selectedMethod=method;final var selectedProducts=products;
     var selected=all.stream().filter(o->{var d=o.getCreada().atZone(ZONE).toLocalDate();var p=byId.get(o.getPagoId());return (from==null||!d.isBefore(from))&&!d.isAfter(effectiveTo)&&(selectedMethod==null||p!=null&&p.getMetodo().name().equals(selectedMethod))&&(category==null||selectedProducts.stream().anyMatch(x->x.id().equals(o.getProductoId())&&x.categoria()!=null&&category.equals(x.categoria().id())));}).toList();
     var custody=new ArrayList<StatsDto.Group>();
-    for(var state:cl.skinspad.pago.escrow.EstadoOperacion.values()){var group=selected.stream().filter(o->o.getEstado()==state).toList();custody.add(new StatsDto.Group(state.name(),state.name(),group.size(),group.stream().mapToLong(o->o.getPrecio()+o.getComision()).sum()));}
-    for(String cause:List.of("EXPIRADA","RECHAZADA_POR_VENDEDOR")){var group=selected.stream().filter(o->cause.equals(o.getCausa())).toList();custody.add(new StatsDto.Group(cause,cause,group.size(),group.stream().mapToLong(o->o.getPrecio()+o.getComision()).sum()));}
-    var held=selected.stream().filter(cl.skinspad.pago.escrow.Operacion::isRetenido).toList();custody.add(new StatsDto.Group("EN_CUSTODIA","Total retenido",held.size(),held.stream().mapToLong(o->o.getPrecio()+o.getComision()).sum()));
+    for(var state:cl.skinspad.pago.escrow.EstadoOperacion.values()){var group=selected.stream().filter(o->o.getEstado()==state).toList();custody.add(new StatsDto.Group(state.name(),state.name(),group.size(),group.stream().mapToLong(o->o.precioEnPesos()+o.getComision()).sum()));}
+    for(String cause:List.of("EXPIRADA","RECHAZADA_POR_VENDEDOR")){var group=selected.stream().filter(o->cause.equals(o.getCausa())).toList();custody.add(new StatsDto.Group(cause,cause,group.size(),group.stream().mapToLong(o->o.precioEnPesos()+o.getComision()).sum()));}
+    var held=selected.stream().filter(cl.skinspad.pago.escrow.Operacion::isRetenido).toList();custody.add(new StatsDto.Group("EN_CUSTODIA","Total retenido",held.size(),held.stream().mapToLong(o->o.precioEnPesos()+o.getComision()).sum()));
     return StatsCalculator.calculate(ps,products,categories,clients,from,effectiveTo,compare,category,method,LocalDateTime.now(ZONE),errors).withCustody(custody);
   }
 }

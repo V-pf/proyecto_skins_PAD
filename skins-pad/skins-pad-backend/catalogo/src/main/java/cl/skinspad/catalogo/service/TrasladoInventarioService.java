@@ -23,7 +23,7 @@ public class TrasladoInventarioService {
   @Transactional
   public void trasladar(Long id) {
     var producto = productos.bloquear(id).orElse(null);
-    if (producto == null || Boolean.FALSE.equals(producto.getTrasladoPendiente())
+    if (producto == null || producto.getInventarioId() != null
         || producto.getVendedorId() == null || producto.getVendedorId().isBlank()) {
       return;
     }
@@ -36,17 +36,12 @@ public class TrasladoInventarioService {
             producto.getTipo(), producto.getGrado(), producto.getDesgaste(),
             Boolean.TRUE.equals(producto.getStattrak()), producto.getFloatValor(), portada));
     producto.setInventarioId(itemId);
-    producto.setRetiradaParaInventario(true);
-    if (producto.getEstado() != EstadoProducto.VENDIDO) {
-      if (producto.getReservaPago() != null) {
-        producto.setEstado(EstadoProducto.INACTIVO);
-      } else if (producto.getEstado() != EstadoProducto.ELIMINADO) {
-        producto.setEstado(EstadoProducto.ELIMINADO);
-        if (producto.getMotivoRechazo() == null) {
-          producto.setMotivoRechazo("Trasladada al inventario del vendedor.");
-        }
+    if (producto.getEstado() != EstadoProducto.VENDIDO
+        && producto.getEstado() != EstadoProducto.ELIMINADO) {
+      producto.setEstado(EstadoProducto.ELIMINADO);
+      if (producto.getMotivoRechazo() == null) {
+        producto.setMotivoRechazo("Trasladada al inventario del vendedor.");
       }
     }
-    producto.setTrasladoPendiente(false);
   }
 }

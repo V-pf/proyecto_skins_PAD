@@ -4,8 +4,11 @@ import cl.skinspad.pago.client.*;
 import cl.skinspad.pago.client.CatalogoPagoClient.Reserva;
 import cl.skinspad.pago.domain.*;
 import cl.skinspad.pago.dto.CheckoutRequest;
+import cl.skinspad.pago.escrow.Operacion;
 import cl.skinspad.pago.repository.PagoRepository;
 import java.math.*;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -53,15 +56,20 @@ public class CheckoutService {
           subtotal.add(subtotal.multiply(new BigDecimal("0.05")).setScale(0, RoundingMode.DOWN));
       if (r.metodo() == MetodoPago.SALDO && usuario.saldo().compareTo(total) < 0)
         throw new IllegalStateException("Saldo insuficiente");
-      for (var skin : skins) pago.getPrecios().put(skin.id(), skin.precio());
+      Map<Long, BigDecimal> cotizacion = new HashMap<>();
+      for (var skin : skins) cotizacion.put(skin.id(), skin.precio());
+      var ahora = ZonedDateTime.now(ZoneId.of("America/Santiago"));
+      for (Long productoId : r.productoIds()) {
+        pago.agregarOperacion(Operacion.pendienteDeImportar(productoId, usuarioId,
+            cotizacion.get(productoId), ahora.toInstant()));
+      }
       pago.setLiquidado(false);
       pago.setCuotas(1);
       pago.setUsuarioId(usuarioId);
       pago.setPedidoId(ref);
-      pago.setProductoIds(new ArrayList<>(r.productoIds()));
       pago.setMetodo(r.metodo());
       pago.setMontoTotal(total);
-      pago.setFecha(java.time.LocalDateTime.now());
+      pago.setFecha(ahora.toLocalDateTime());
       pago.setEstado(EstadoPago.PENDIENTE);
       // Se guarda el pago pendiente antes de intentar cobrar.
       pago = pagos.saveAndFlush(pago);
@@ -144,8 +152,9 @@ public class CheckoutService {
       if (p.getMetodo() != MetodoPago.SALDO && !p.getProductoIds().isEmpty()) {
         var skins = catalogo.reservar(new Reserva(p.getPedidoId(), p.getProductoIds(), "RESERVAR"));
         try {
+          var precios = p.getPrecios();
           for (var skin : skins) {
-            var cotizado = p.getPrecios().get(skin.id());
+            var cotizado = precios.get(skin.id());
             if (cotizado != null && cotizado.compareTo(skin.precio()) != 0)
               throw new IllegalStateException(
                   "El precio cambió. Rechaza el pago y solicita una nueva compra.");

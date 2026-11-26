@@ -29,10 +29,8 @@ export interface Producto {
   estado: EstadoPublicacion;
   vendedorId?: string;
   inventarioId?: number | null;
-  demo?: boolean | null;
   revisionApta?: boolean | null;
   categoriaId?: number;
-  urlIntercambio?: string;
   imagenes?: {id:number;urlImagen:string;esPrincipal:boolean}[];
   coleccion?: string;
   descripcion?: string;
@@ -48,7 +46,6 @@ export interface Usuario {
   usuario: string;
   correo: string;
   fechaNacimiento: string;
-  urlSteam: string;
   rol: Rol;
   motivo?: string;
   suspendido: boolean;

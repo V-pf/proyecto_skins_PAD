@@ -2,7 +2,6 @@ package cl.skinspad.catalogo.controller;
 
 import cl.skinspad.catalogo.client.InventarioAuth;
 import cl.skinspad.catalogo.domain.Producto;
-import cl.skinspad.catalogo.dto.DisponibilidadInventarioRequest;
 import cl.skinspad.catalogo.dto.EstadoPublicacionInventario;
 import cl.skinspad.catalogo.dto.PublicarDesdeInventarioRequest;
 import cl.skinspad.catalogo.service.CatalogoService;
@@ -21,12 +20,6 @@ public class PublicacionInventarioController {
   @GetMapping("/interno/publicaciones/{usuarioId}")
   public List<EstadoPublicacionInventario> estados(@PathVariable String usuarioId) {
     return catalogo.estadosDeInventario(usuarioId);
-  }
-
-  @PutMapping("/interno/publicaciones/{usuarioId}/disponibilidad")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void disponibilidad(@PathVariable String usuarioId, @Valid @RequestBody DisponibilidadInventarioRequest datos) {
-    catalogo.actualizarDisponibilidadInventario(usuarioId, datos.disponibles());
   }
 
   @PostMapping("/api/inventario/publicaciones")

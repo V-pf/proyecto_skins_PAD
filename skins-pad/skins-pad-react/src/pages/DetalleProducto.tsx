@@ -4,30 +4,18 @@ import { useOperacion } from "../lib/useOperacion";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import Campo from "../components/Campo";
 import ListaProductos from "../components/ListaProductos";
 import Migas from "../components/Migas";
 import { useAuth } from "../context/AuthContext";
 import { useCarrito } from "../context/CarritoContext";
 import { useTienda } from "../context/TiendaContext";
 import { useToast } from "../context/ToastContext";
-import { ESTADO_PUBLICACION, DESGASTES, etiquetaTipo, imagenDe, infoGrado, METODOS_PAGO } from "../lib/catalogos";
+import { ESTADO_PUBLICACION, DESGASTES, etiquetaTipo, imagenDe, infoGrado } from "../lib/catalogos";
 import {
   calcularTotales,
   formatoCLP,
   formatoFloat,
-  hoyISO,
 } from "../lib/formato";
-import { useFormulario } from "../lib/useFormulario";
-import type { Errores } from "../lib/useFormulario";
-import { requerido, seleccion } from "../lib/validaciones";
-
-interface CompraForm {
-  [clave: string]: string | boolean;
-  nombreSteam: string;
-
-  metodoPago: string;
-}
 
 export default function DetalleProducto() {
   const { ejecutar, ocupado } = useOperacion();
@@ -42,20 +30,6 @@ export default function DetalleProducto() {
 
   const producto = productos.find(
     (p) => p.id === Number(id),
-  );
-
-  const form = useFormulario<CompraForm>(
-    "oferta",
-    {
-      nombreSteam: usuario?.usuario ?? "",
-
-      metodoPago: "Saldo",
-    },
-    (v): Errores<CompraForm> => ({
-      nombreSteam: requerido(v.nombreSteam, "usuario"),
-
-      metodoPago: seleccion(v.metodoPago),
-    }),
   );
 
   if (cargando.productos) return <p className="container py-4">Cargando catálogo…</p>;
@@ -99,27 +73,24 @@ export default function DetalleProducto() {
     });
   }
 
-  // Valida el formulario y registra una compra de esta publicación sin pasar por el carrito.
+  // Registra la compra directamente desde la publicación.
   function comprar(e: FormEvent) {
     e.preventDefault();
     void ejecutar(async () => {
       if (!producto) return;
       setErrorCompra("");
-      if (!form.validar()) return;
       if (!usuario) {
         navigate("/login", { state: { desde: `/producto/${producto.id}` } });
         return;
       }
       const totales = calcularTotales(producto.precio);
-      if (form.valores.metodoPago === "Saldo") {
-        if (usuario.saldo < totales.total) {
-          setErrorCompra(
-            `Tu saldo (${formatoCLP(usuario.saldo)}) no alcanza para pagar ${formatoCLP(totales.total)}.`,
-          );
-          return;
-        }
+      if (usuario.saldo < totales.total) {
+        setErrorCompra(
+          `Tu saldo (${formatoCLP(usuario.saldo)}) no alcanza para pagar ${formatoCLP(totales.total)}.`,
+        );
+        return;
       }
-      const pago = await pagar([producto.id], form.valores.metodoPago);
+      const pago = await pagar([producto.id]);
       navigate("/cliente/compras", {
         state: { mensaje: pago.estado === "PENDIENTE"
           ? `El pago #${pago.id} sigue procesándose.`
@@ -152,8 +123,8 @@ export default function DetalleProducto() {
               className="img-fluid"
             />
             <figcaption className="mt-2 text-body-secondary small">
-              {producto.inventarioId && !producto.demo && producto.imagenes?.length
-                ? "Imagen del inventario de Steam."
+              {producto.inventarioId && producto.imagenes?.length
+                ? "Imagen del inventario."
                 : "Imagen ilustrativa. El aspecto final depende del acabado real del ítem."}
             </figcaption>
           </figure>
@@ -191,7 +162,6 @@ export default function DetalleProducto() {
 
         <div className="col-lg-6">
           <p className="badge-grado mb-2">{grado.insignia}</p>
-          {producto.demo && <p className="alert alert-warning">Ítem de prueba del inventario.</p>}
           <BotonReporte tipo="PUBLICACION" objetivoId={String(producto.id)} propietario={producto.vendedorId}/><h1 className="mb-1">
             {producto.nombre}{" "}
             {producto.stattrak && (
@@ -255,8 +225,8 @@ export default function DetalleProducto() {
           <details className="mb-4">
             <summary>Detalles de la entrega</summary>
             <p className="small text-body-secondary mt-2 mb-0">
-              El intercambio se realiza en Steam. Puedes consultar el estado del
-              pago en Mis pagos.
+              Durante la demostración, el vendedor marca la entrega y el comprador confirma la recepción en Skins PAD.
+              Puedes seguir la operación en Mis compras.
             </p>
           </details>
 
@@ -264,31 +234,13 @@ export default function DetalleProducto() {
             <h2 id="tit-oferta" className="h5">
               Comprar ahora
             </h2>
-            <form className="mt-4" onSubmit={comprar} noValidate>
-              {form.intento && Object.keys(form.errores).length > 0 && (
-                <div className="alert alert-danger" role="alert">
-                  Hay campos por corregir. Revisa los mensajes marcados en rojo.
-                </div>
-              )}
+            <form className="mt-4" onSubmit={comprar}>
               {errorCompra && (
                 <div className="alert alert-danger" role="alert">
                   {errorCompra}
                 </div>
               )}
-              <Campo
-                form={form}
-                nombre="nombreSteam"
-                etiqueta="Tu nombre en Steam"
-                placeholder="ej: penquista_gamer"
-              />
-              <Campo
-                form={form}
-                nombre="metodoPago"
-                etiqueta="Método de pago"
-                tipo="select"
-                opciones={producto.demo ? [...METODOS_PAGO.saldo, ...METODOS_PAGO.simulados] : METODOS_PAGO.saldo}
-                textoOpcionVacia="Selecciona un medio"
-              />
+              <p>El pago se descontará del saldo de tu billetera Skins PAD.</p>
               <p className="small text-body-secondary">
                 {formatoCLP(producto.precio)} + 5% de comisión ={" "}
                 <strong>

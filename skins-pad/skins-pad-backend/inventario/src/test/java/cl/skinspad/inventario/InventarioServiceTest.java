@@ -28,22 +28,40 @@ class InventarioServiceTest {
   void trasladoEsIdempotenteYElItemSoloApareceEnElInventarioDeSuDueno() {
     var item = service.guardarTraslado("dueno", 42L, null, "AK-47 | Redline", "rifle",
         "clasificado", "ft", false, null, null);
+    assertEquals("catalogo-42", item.getAssetId());
+    assertEquals(42L, item.getProductoOrigenId());
     assertEquals(item.getId(), service.guardarTraslado("dueno", 42L, null, "AK-47 | Redline",
         "rifle", "clasificado", "ft", false, null, null).getId());
     assertTrue(service.consultar("dueno").items().isEmpty());
     when(servicios.estados("dueno")).thenReturn(List.of(
         new ServiciosInternos.Publicacion(item.getId(), 42L, "ELIMINADO", true)));
     var vista = service.consultar("dueno");
-    assertTrue(vista.demo());
     assertEquals(1, vista.items().size());
     assertTrue(vista.items().get(0).publicable());
     assertTrue(service.consultar("ajeno").items().isEmpty());
     assertThrows(IllegalArgumentException.class,
         () -> service.verificarDisponible("ajeno", item.getId()));
-    when(servicios.steamId("dueno")).thenReturn("76561198000000001");
-    service.sincronizar("dueno");
-    assertEquals(item.getId(), service.consultar("dueno").items().get(0).item().getId());
-    verify(servicios).actualizarDisponibilidad("dueno", java.util.Set.of(item.getId()));
+    assertEquals(item.getId(), service.verificarDisponible("dueno", item.getId()).getId());
+  }
+
+  @Test
+  void reintentarElTrasladoReutilizaElInventarioPrecargado() {
+    var precargado = new ItemInventario();
+    precargado.setUsuarioId("dueno-precarga");
+    precargado.setAssetId("precarga-1");
+    precargado.setNombre("AK-47 | Redline");
+    Long id = items.saveAndFlush(precargado).getId();
+
+    var trasladado = service.guardarTraslado("dueno-precarga", 77L, id, "AK-47 | Redline",
+        "rifle", "clasificado", "ft", false, null, null);
+    assertEquals(id, trasladado.getId());
+    assertEquals("catalogo-77-" + id, trasladado.getAssetId());
+    assertEquals(77L, trasladado.getProductoOrigenId());
+
+    var reintento = service.guardarTraslado("dueno-precarga", 77L, null, "AK-47 | Redline",
+        "rifle", "clasificado", "ft", false, null, null);
+    assertEquals(id, reintento.getId());
+    assertEquals(1, items.findByUsuarioIdOrderById("dueno-precarga").size());
   }
 
   @Test
@@ -62,23 +80,24 @@ class InventarioServiceTest {
   }
 
   @Test
-  void falloDeSteamConservaInventarioYUnaSincronizacionCompletaRetiraAusentes() {
-    when(servicios.steamId("real")).thenReturn("76561198000000001");
+  void conservaYValidaLocalmenteLosItemsImportadosConAnterioridad() {
     var item = new ItemInventario();
+    item.setUsuarioId("dueno-legado");
     item.setAssetId("100");
     item.setNombre("AK-47 | Redline (Field-Tested)");
     item.setTipo("rifle");
     item.setGrado("clasificado");
     item.setDesgaste("ft");
     item.setIntercambiable(true);
-    when(servicios.inventarioSteam("real")).thenReturn(List.of(item));
-    service.sincronizar("real");
-    Long id = service.consultar("real").items().get(0).item().getId();
-    when(servicios.inventarioSteam("real")).thenThrow(new IllegalStateException("Steam no disponible"));
-    assertThrows(IllegalStateException.class, () -> service.sincronizar("real"));
-    assertTrue(items.findById(id).orElseThrow().isPresente());
-    doReturn(List.of()).when(servicios).inventarioSteam("real");
-    service.sincronizar("real");
-    assertFalse(items.findById(id).orElseThrow().isPresente());
+    item.setPresente(true);
+    Long id = items.saveAndFlush(item).getId();
+    assertEquals(id, service.verificarDisponible("dueno-legado", id).getId());
+    verifyNoInteractions(servicios);
+    assertTrue(service.consultar("dueno-legado").items().get(0).publicable());
+
+    item.setPresente(false);
+    items.saveAndFlush(item);
+    assertFalse(service.consultar("dueno-legado").items().get(0).publicable());
+    assertThrows(IllegalStateException.class, () -> service.verificarDisponible("dueno-legado", id));
   }
 }

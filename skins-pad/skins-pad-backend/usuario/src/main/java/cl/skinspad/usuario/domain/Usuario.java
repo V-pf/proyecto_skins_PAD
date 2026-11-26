@@ -43,9 +43,6 @@ public class Usuario {
 
     private LocalDate fechaNacimiento;
 
-    @Column(length = 500)
-    private String linkSteam;
-
     @jakarta.persistence.Convert(converter = RolPersistido.class)
     @Column(nullable = false, length = 20, columnDefinition = "varchar(20)")
     private Rol rol = Rol.cliente;

@@ -35,11 +35,7 @@ spring:
             - id: inventario-service
               uri: ${INVENTARIO_SERVICE_URL:http://127.0.0.1:8082}
               predicates:
-                - Path=/api/inventario,/api/inventario/**
-            - id: steam-service
-              uri: ${STEAM_SERVICE_URL:http://127.0.0.1:8088}
-              predicates:
-                - Path=/api/steam/**
+                - Path=/api/inventario,/api/inventario/{itemId}/precios
             - id: calificacion-service
               uri: ${CALIFICACION_URL:http://localhost:8089}
               predicates:

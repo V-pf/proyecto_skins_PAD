@@ -42,7 +42,7 @@ public class ProductoController {
     public Producto crear(@Valid @RequestBody ProductoRequest r) {
         var req=((org.springframework.web.context.request.ServletRequestAttributes)org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes()).getRequest();
         if(!java.util.Objects.equals(req.getAttribute("actor"),r.vendedorId()) || r.estado()!=EstadoProducto.PENDIENTE_APROBACION)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN);
-        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.GONE, "Publica seleccionando un ítem de tu inventario Steam.");
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.GONE, "Publica seleccionando un ítem de tu inventario.");
     }
 
     @PutMapping("/{id}")

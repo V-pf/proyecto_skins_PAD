@@ -12,7 +12,7 @@ if (-not $driver) { throw 'No se encontró el controlador JDBC. Arranca los serv
 $anteriores = @{}
 try {
     if ($Demo) {
-        foreach ($servicio in @('catalogo', 'steam', 'inventario')) {
+        foreach ($servicio in @('catalogo', 'inventario')) {
             $prefijo = "${servicio}".ToUpperInvariant() + '_DB_'
             $base = Join-Path $backend "$servicio\data\$servicio"
             foreach ($nombre in @('URL', 'USERNAME', 'PASSWORD')) {

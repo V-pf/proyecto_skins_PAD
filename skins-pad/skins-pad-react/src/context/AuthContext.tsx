@@ -16,7 +16,6 @@ export interface DatosRegistro {
   correo: string;
   clave: string;
   fechaNacimiento: string;
-  urlSteam: string;
 }
 
 interface Auth {
@@ -87,7 +86,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: d.correo,
         username: d.usuario,
         password: d.clave,
-        linkSteam: d.urlSteam,
         fechaNacimiento: d.fechaNacimiento,
       });
       return ingresar(d.usuario, d.clave, false);

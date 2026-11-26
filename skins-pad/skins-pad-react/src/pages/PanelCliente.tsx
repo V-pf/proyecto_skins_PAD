@@ -4,7 +4,6 @@ import {solicitar} from "../services/http";
 import type {Pago} from "../lib/api";
 import { Link, useLocation } from "react-router-dom";
 import ListaProductos from "../components/ListaProductos";
-import MenuCuenta from "../components/MenuCuenta";
 import Migas from "../components/Migas";
 import { useAuth } from "../context/AuthContext";
 import { useCarrito } from "../context/CarritoContext";
@@ -79,57 +78,52 @@ export default function PanelCliente() {
           </dl>
         </div>
       </div>
-      <div className="row g-4">
-        <MenuCuenta tipo="cliente" activo="/cliente/panel" />
-        <div className="col-lg-9">
-          {productos.filter(p=>p.vendedorId===usuario.id && p.motivoRechazo && (p.estado==="eliminada" || p.estado==="rechazada")).map(p=><p key={p.id} className="alert alert-warning">«{p.nombre}» · {p.estado}. Motivo: {p.motivoRechazo}</p>)}
-          {errorVentas?<p role="alert">{errorVentas}</p>:<Mercado ventas={ventas} vendedorId={usuario.id}/>}
-          <section aria-labelledby="tit-actividad" className="mb-5">
-            <h2 id="tit-actividad" className="h5">
-              Actividad reciente
-            </h2>
-            {misPagos.length === 0 ? (
-              <p className="text-body-secondary">
-                Todavía no tienes compras. <Link to="/catalogo">Explora el catálogo</Link>.
-              </p>
-            ) : (
-              <table className="table align-middle">
-                <caption className="visually-hidden">Actividad reciente de la cuenta</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Fecha</th>
-                    <th scope="col">Actividad</th>
-                    <th scope="col">Monto</th>
-                    <th scope="col">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {misPagos.slice(0, 3).map((p) => (
-                    <tr key={p.id}>
-                      <td>
-                        <time dateTime={p.fecha}>{fechaCorta(p.fecha.slice(0,10))}</time>
-                      </td>
-                      <td>Compra: {p.metodo}</td>
-                      <td>{formatoCLP(p.montoTotal)}</td>
-                      <td>
-                        <span className={`badge ${"text-bg-secondary"}`}>{p.estado}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </section>
-          {recomendados.length > 0 && (
-            <section aria-labelledby="tit-recomendado">
-              <h2 id="tit-recomendado" className="h5">
-                Basado en tus compras
-              </h2>
-              <ListaProductos productos={recomendados} columnas="row-cols-1 row-cols-sm-3" />
-            </section>
-          )}
-        </div>
-      </div>
+      {productos.filter(p=>p.vendedorId===usuario.id && p.motivoRechazo && (p.estado==="eliminada" || p.estado==="rechazada")).map(p=><p key={p.id} className="alert alert-warning">«{p.nombre}» · {p.estado}. Motivo: {p.motivoRechazo}</p>)}
+      {errorVentas?<p role="alert">{errorVentas}</p>:<Mercado ventas={ventas} vendedorId={usuario.id}/>}
+      <section aria-labelledby="tit-actividad" className="mb-5">
+        <h2 id="tit-actividad" className="h5">
+          Actividad reciente
+        </h2>
+        {misPagos.length === 0 ? (
+          <p className="text-body-secondary">
+            Todavía no tienes compras. <Link to="/catalogo">Explora el catálogo</Link>.
+          </p>
+        ) : (
+          <table className="table align-middle">
+            <caption className="visually-hidden">Actividad reciente de la cuenta</caption>
+            <thead>
+              <tr>
+                <th scope="col">Fecha</th>
+                <th scope="col">Actividad</th>
+                <th scope="col">Monto</th>
+                <th scope="col">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {misPagos.slice(0, 3).map((p) => (
+                <tr key={p.id}>
+                  <td>
+                    <time dateTime={p.fecha}>{fechaCorta(p.fecha.slice(0,10))}</time>
+                  </td>
+                  <td>Compra: {p.metodo}</td>
+                  <td>{formatoCLP(p.montoTotal)}</td>
+                  <td>
+                    <span className={`badge ${"text-bg-secondary"}`}>{p.estado}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+      {recomendados.length > 0 && (
+        <section aria-labelledby="tit-recomendado">
+          <h2 id="tit-recomendado" className="h5">
+            Basado en tus compras
+          </h2>
+          <ListaProductos productos={recomendados} columnas="row-cols-1 row-cols-sm-3" />
+        </section>
+      )}
     </div>
   );
 }

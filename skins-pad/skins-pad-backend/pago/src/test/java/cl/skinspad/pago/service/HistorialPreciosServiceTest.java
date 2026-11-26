@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import cl.skinspad.pago.escrow.*;
 import com.sun.net.httpserver.HttpServer;
+import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.time.*;
 import java.util.List;
@@ -16,17 +17,14 @@ class HistorialPreciosServiceTest {
   void adaptaPublicacionesAnterioresSinConfundirDesgasteOVariante() {
     assertEquals(
         "StatTrak™ AK-47 | Redline (Field-Tested)",
-        HistorialPreciosService.nombreMercado(
-            new HistorialPreciosService.Producto(1L, "AK-47 | Redline", false, "ft", true)));
+        HistorialPreciosService.nombreMercado("AK-47 | Redline", "ft", true));
     assertEquals(
         "AK-47 | Redline (Field-Tested)",
-        HistorialPreciosService.nombreMercado(
-            new HistorialPreciosService.Producto(
-                1L, "AK-47 | Redline (Field-Tested)", false, "ft", false)));
+        HistorialPreciosService.nombreMercado("AK-47 | Redline (Field-Tested)", "ft", false));
   }
 
   @Test
-  void agrupaPreciosVendidosYExcluyePruebasYOtrasVariantes() throws Exception {
+  void agrupaVentasDeLaMismaVarianteIncluidasLasSkinsPrecargadas() throws Exception {
     var servidor = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     servidor.createContext(
         "/api/productos",
@@ -55,27 +53,27 @@ class HistorialPreciosServiceTest {
               .toInstant();
       var a = new Operacion();
       a.setProductoId(1L);
-      a.setPrecio(1000);
+      a.setPrecio(BigDecimal.valueOf(1000));
       a.setCompletada(fecha);
       var b = new Operacion();
       b.setProductoId(1L);
-      b.setPrecio(3000);
+      b.setPrecio(BigDecimal.valueOf(3000));
       b.setCompletada(fecha);
-      var demo = new Operacion();
-      demo.setProductoId(2L);
-      demo.setPrecio(90000);
-      demo.setCompletada(fecha);
+      var precargada = new Operacion();
+      precargada.setProductoId(2L);
+      precargada.setPrecio(BigDecimal.valueOf(2000));
+      precargada.setCompletada(fecha);
       var otro = new Operacion();
       otro.setProductoId(3L);
-      otro.setPrecio(90000);
+      otro.setPrecio(BigDecimal.valueOf(90000));
       otro.setCompletada(fecha);
       when(repo.findByEstadoAndCompletadaGreaterThanEqual(eq(EstadoOperacion.COMPLETADA), any()))
-          .thenReturn(List.of(a, b, demo, otro));
-      var puntos = service.consultar("AK-47 | Redline (Field-Tested)", 30);
+          .thenReturn(List.of(a, b, precargada, otro));
+      var puntos = service.consultar("AK-47 | Redline", 30, "ft", false);
       assertEquals(1, puntos.size());
       assertEquals(2000, puntos.get(0).precioMedio());
-      assertEquals(2, puntos.get(0).ventas());
-      assertThrows(IllegalArgumentException.class, () -> service.consultar("AK-47", 500));
+      assertEquals(3, puntos.get(0).ventas());
+      assertThrows(IllegalArgumentException.class, () -> service.consultar("AK-47", 500, null, null));
     } finally {
       servidor.stop(0);
     }

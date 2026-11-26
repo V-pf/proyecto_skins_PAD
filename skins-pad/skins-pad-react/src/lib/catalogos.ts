@@ -66,12 +66,3 @@ export const ESTADO_PUBLICACION: Record<EstadoPublicacion, { texto: string; clas
   eliminada: {texto:"Retirada",clase:"text-bg-secondary"},
   rechazada: { texto: "Rechazada", clase: "text-bg-danger" },
 };
-
-export const METODOS_PAGO = {
-  saldo: [{ valor: "Saldo", etiqueta: "Saldo en la billetera Skins PAD" }],
-  simulados: [
-    { valor: "Tarjeta", etiqueta: "Tarjeta (simulación)" },
-    { valor: "Transferencia", etiqueta: "Transferencia (simulación)" },
-    { valor: "Mercado Pago", etiqueta: "Mercado Pago (simulación)" },
-  ],
-};

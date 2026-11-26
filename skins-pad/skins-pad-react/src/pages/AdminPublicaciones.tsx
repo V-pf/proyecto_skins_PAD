@@ -94,7 +94,7 @@ export default function AdminPublicaciones({ integrado = false }: { integrado?: 
       />}
       <Titulo className="h4 mb-4">Publicaciones</Titulo>
       <div className="row g-4">
-        {!integrado && <MenuCuenta tipo="admin" activo="/admin/publicaciones" />}
+        {!integrado && <MenuCuenta activo="/admin/publicaciones" />}
         <div className={integrado ? "col-12" : "col-lg-9"}>
           {aviso && (
             <div className="alert alert-success" role="status">

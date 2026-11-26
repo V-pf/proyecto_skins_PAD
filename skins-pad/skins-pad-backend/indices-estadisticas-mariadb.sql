@@ -7,5 +7,4 @@ CREATE INDEX IF NOT EXISTS idx_stats_pagos_metodo_fecha ON skinspad_pago.pagos(m
 CREATE INDEX IF NOT EXISTS idx_stats_productos_categoria_fecha ON skinspad_catalogo.productos(categoria_id,fecha_creacion);
 CREATE INDEX IF NOT EXISTS idx_stats_productos_vendedor_estado ON skinspad_catalogo.productos(vendedor_id,estado);
 CREATE INDEX IF NOT EXISTS idx_stats_productos_fecha ON skinspad_catalogo.productos(fecha_creacion);
-CREATE INDEX IF NOT EXISTS idx_stats_lineas_producto_pago ON skinspad_pago.pago_producto_ids(producto_ids,pago_id);
--- pago_precios ya tiene PK (pago_id,producto_id); no duplicarla.
+CREATE INDEX IF NOT EXISTS idx_stats_lineas_producto_pago ON skinspad_pago.operaciones(producto_id,pago_id);

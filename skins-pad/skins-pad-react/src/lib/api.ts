@@ -3,7 +3,6 @@ export { ErrorAPI } from "../services/http";
 export interface UsuarioAPI extends Usuario {
   username: string;
   email: string;
-  linkSteam: string;
 }
 // Pasa los nombres de campos del servicio de usuarios a los que usa React.
 export const usuarioUI = (u: UsuarioAPI): Usuario => ({
@@ -11,7 +10,6 @@ export const usuarioUI = (u: UsuarioAPI): Usuario => ({
   rol: u.rol === "admin" ? "admin" : "cliente",
   usuario: u.username,
   correo: u.email,
-  urlSteam: u.linkSteam,
 });
 // Datos de una categoría y su disponibilidad para nuevas publicaciones.
 export interface Categoria {

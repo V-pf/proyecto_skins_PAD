@@ -1,18 +1,32 @@
 package cl.skinspad.pago.domain;
 
+import cl.skinspad.pago.escrow.Operacion;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 // Registro de un cobro con su comprador, método, monto, estado y skins incluidas.
 @Entity
@@ -29,9 +43,16 @@ public class Pago {
     private Boolean simulado;
     private String etapaCustodia;
     @Column(length=500) private String errorCustodia;
+
+    @JsonIgnore
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @Setter(AccessLevel.NONE)
     @org.hibernate.annotations.BatchSize(size=100)
-    @jakarta.persistence.ElementCollection(fetch=jakarta.persistence.FetchType.EAGER)
-    private java.util.List<Long> productoIds=new java.util.ArrayList<>();
+    @OneToMany(mappedBy = "pago", cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    @OrderBy("id")
+    private List<Operacion> operaciones = new ArrayList<>();
+
     public Pago(Long id,String pedidoId,String usuarioId,BigDecimal montoTotal,MetodoPago metodo,EstadoPago estado,String referenciaExterna,LocalDateTime fecha){
         this.id=id;this.pedidoId=pedidoId;this.usuarioId=usuarioId;this.montoTotal=montoTotal;this.metodo=metodo;this.estado=estado;this.referenciaExterna=referenciaExterna;this.fecha=fecha;
     }
@@ -58,14 +79,28 @@ public class Pago {
     private Integer cuotas;
     // Marca que se completaron los abonos a los vendedores y se solicitó el envío del recibo.
     private Boolean liquidado;
-    // Guarda el precio de cada skin al iniciar la compra para poder consultarlo después.
-    @org.hibernate.annotations.BatchSize(size=100)
-    @jakarta.persistence.ElementCollection(fetch=jakarta.persistence.FetchType.EAGER)
-    @jakarta.persistence.MapKeyColumn(name="producto_id")
-    @Column(name="precio_venta",precision=15,scale=2)
-    private java.util.Map<Long,BigDecimal> precios=new java.util.HashMap<>();
     private String numeroOperacion;
 
     @Column(nullable = false)
     private LocalDateTime fecha;
+
+    public void agregarOperacion(Operacion operacion) {
+        operacion.setPago(this);
+        operaciones.add(operacion);
+    }
+
+    // Se conserva el formato de las respuestas de pagos a partir de la lista de operaciones.
+    public List<Long> getProductoIds() {
+        return operaciones.stream().map(Operacion::getProductoId).toList();
+    }
+
+    public Map<Long, BigDecimal> getPrecios() {
+        Map<Long, BigDecimal> precios = new LinkedHashMap<>();
+        for (var operacion : operaciones) {
+            if (operacion.getPrecio() != null) {
+                precios.put(operacion.getProductoId(), operacion.getPrecio());
+            }
+        }
+        return precios;
+    }
 }

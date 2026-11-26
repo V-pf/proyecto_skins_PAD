@@ -113,11 +113,10 @@ function Fila({ v, vista, recargar }: { v: VistaOperacion; vista: string; recarg
         </p>
       )}
       {o.estado === "ACEPTADA_POR_VENDEDOR" && vendedor && (
-        <p>{v.simulado ? "Marca la entrega para continuar la simulación."
-          : "Envía la skin mediante un intercambio en Steam y marca la entrega."}</p>
+        <p>Marca la entrega en Skins PAD para continuar la demostración.</p>
       )}
       {o.estado === "ENTREGADA" && !admin && !vendedor && !v.simulado && (
-        <p>Confirma cuando recibas la skin. Si hay un problema, abre una disputa antes de que venza el plazo de liberación automática.</p>
+        <p>Confirma la recepción para completar la venta de prueba. También puedes probar una disputa antes de que venza el plazo.</p>
       )}
       {acciones.some(([, , requiereMotivo]) => requiereMotivo) && (
         <label className="d-block mb-2">
